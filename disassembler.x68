@@ -2,8 +2,8 @@
 * Title      : Disassembler
 * Written by : Cool Dudes (Cheuk-Hang Tse, Leonardo Mota-Villaraldo,
 *              Sean Le, Zachary Joseph Morrison)
-* Date       : 10/25/2020
-* Description: Dissambles M68000 machine code into instructions
+* Date       : 11/02/2020
+* Description: Disassemmbles M68000 machine code into instructions
 *-----------------------------------------------------------
     
 LF      EQU     $0A      ; Line feed
