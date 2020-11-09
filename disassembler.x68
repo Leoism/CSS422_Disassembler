@@ -14,6 +14,9 @@ ENADR   DS.L    1        ; allocate for end address
 
 ASKST   DC.B    'Please enter starting address in hex:',0
 ASKEN   DC.B    CR,LF,'Please enter ending address in hex:',0
+DISST   DC.B    CR,LF,'Starting Address:',0
+DISEN   DC.B    CR,LF,'Ending Address:',0
+
         ORG     $1000     ; start at 1000
 START:          
 
@@ -171,15 +174,36 @@ SHIFT4NXT:
         BRA     CHARLOOP
 ISLASTIN:
         CMP.B   #1,D7       ; if D7 is set, asking for last input
-        BEQ     DONE        ; branch to the next place if asking for end
+        BEQ     PRINTVAL        ; branch to the next place if asking for end
         CLR.L   D3          ; Clear character count
         MOVE.L  D2,STADR
+        CLR     D2
         BRA     ENDADR      ; else ask for input
 PRESSEDENT:
         ASR.L   #4,D2       ; remove the extra bit shift since when
                             ; pressing enter max chars is 7
+PRINTVAL:
+        MOVE.L  D2,ENADR    ; saving since latest address has not been saved yet
+        
+        LEA     DISST,A1
+        MOVE.B  #13,D0
+        TRAP    #15
+
+        MOVE.L  STADR,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        CLR     D1
+
+        LEA     DISEN,A1
+        MOVE.B  #13,D0
+        TRAP    #15
+        
+        MOVE.L  ENADR,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
 DONE:
-        MOVE.L  D2,ENADR
         CLR.L   D1          ; clear up the data registers used.
         CLR.L   D2
         CLR.L   D3
