@@ -16,7 +16,7 @@ ASKST   DC.B    'Please enter starting address in hex:',0
 ASKEN   DC.B    CR,LF,'Please enter ending address in hex:',0
 DISST   DC.B    CR,LF,'Starting Address:',0
 DISEN   DC.B    CR,LF,'Ending Address:',0
-
+INVALIDMSG DC.B    CR,LF,'You entered an invalid address. Try again.',CR,LF,0
         ORG     $1000     ; start at 1000
 START:          
 
@@ -47,7 +47,7 @@ ISEND:
 * corresponding hex
 CONVERTTOHEX:
         CMP.B   #$30,D1     ; if the less than 0x30 not valid
-        BLT     DONE
+        BLT     INVALID
         SUB.B   #$30,D1     ; offset by 0x30 
         CMP.B   #$9,D1      ; if greater than 0x9, could be a HEX letter
         BGT     ISUPP
@@ -55,16 +55,16 @@ CONVERTTOHEX:
 ISUPP: * Checks if the character is a HEX letter in uppercase
         SUB.B   #$7,D1      ; offset by 0x07 
         CMP.B   #$A,D1      
-        BLT     DONE        ; if less than 0xA, invalid char
+        BLT     INVALID        ; if less than 0xA, invalid char
         CMP.B   #$F,D1  
         BGT     ISLOW       ; could be lowercase HEX letter
         BRA     SHIFT4NXT
 ISLOW: * Checks if the character is a HEX letter in lowercase
         SUB.B   #$20,D1     ; offset by 0x20
         CMP.B   #$A,D1      ; if less than 0xA, invalid char
-        BLT     DONE
+        BLT     INVALID
         CMP.B   #$F,D1      ; if greater than 0xF, invalid char
-        BGT     DONE
+        BGT     INVALID
         BRA     SHIFT4NXT
 * END * 
 
@@ -87,16 +87,34 @@ ISLASTIN:
         BRA     ENDADR      ; else ask for input
 
 INVALID:                    ; handle an invalid input
-        BRA     DONE
+        LEA     INVALIDMSG,A1
+        MOVE.B  #13,D0
+        TRAP    #15
+        CLR.L   D0
+        CLR.L   D1
+        CLR.L   D2
+        CLR.L   D3
+        CLR.L   D4
+        CLR.L   D5
+        CLR.L   D6
+        CLR.L   D7
+        BRA     STARTADR
 VALIDATEIN:
+        CLR.L   D3
+        MOVE.L  D2,ENADR    ; saving since latest address has not been saved yet
         MOVE.L  STADR,D1
         CMP.L   D1,D2       ; check if ending is before start
         BLO     INVALID
-        CMP.L   #$1000,D1 ; check if start is before program start
+        CMP.L   #$1000,D1   ; check if start is before program start
         BLT     INVALID
-
+LOOPEND: * 68k only allows loading addresses with 0 at end
+        CMP.B   #4,D3
+        BGE     READMEM
+        LSR.B   #1,D1       ; check starting address to avoid loading invalid address
+        BCS     INVALID
+        ADD.B   #1,D3
+        BRA     LOOPEND
 READMEM:
-        MOVE.L  D2,ENADR    ; saving since latest address has not been saved yet
         CLR.L   D7
         CLR.L   D3     
         CLR.L   D2
