@@ -41,147 +41,53 @@ CHARLOOP:
 ISEND:
         CMP.B   #$D,D1
         BEQ     PRESSEDENT
-        BRA     IS0
+        BRA     CONVERTTOHEX
+
 * START: The following section converts ascii characters to
 * corresponding hex
-IS0:
-        CMP.B   #$30,D1
-        BNE     IS1
-        CLR     D1
-        ADD.B   #$00,D2
+CONVERTTOHEX:
+        CMP.B   #$30,D1     ; if the less than 0x30 not valid
+        BLT     DONE
+        SUB.B   #$30,D1     ; offset by 0x30 
+        CMP.B   #$9,D1      ; if greater than 0x9, could be a HEX letter
+        BGT     ISUPP
         BRA     SHIFT4NXT
-IS1:
-        CMP.B   #$31,D1
-        BNE     IS2
-        CLR     D1
-        ADD.B   #$01,D2
+ISUPP: * Checks if the character is a HEX letter in uppercase
+        SUB.B   #$7,D1      ; offset by 0x07 
+        CMP.B   #$A,D1      
+        BLT     DONE        ; if less than 0xA, invalid char
+        CMP.B   #$F,D1  
+        BGT     ISLOW       ; could be lowercase HEX letter
         BRA     SHIFT4NXT
-IS2:
-        CMP.B   #$32,D1
-        BNE     IS3
-        CLR     D1
-        ADD.B   #$02,D2
-        BRA     SHIFT4NXT
-IS3:
-        CMP.B   #$33,D1
-        BNE     IS4
-        CLR     D1
-        ADD.B   #$03,D2
-        BRA     SHIFT4NXT
-IS4:
-        CMP.B   #$34,D1
-        BNE     IS5
-        CLR     D1
-        ADD.B   #$04,D2
-        BRA     SHIFT4NXT
-IS5:
-        CMP.B   #$35,D1
-        BNE     IS6
-        CLR     D1
-        ADD.B   #$05,D2
-        BRA     SHIFT4NXT
-IS6:
-        CMP.B   #$36,D1
-        BNE     IS7
-        CLR     D1
-        ADD.B   #$06,D2
-        BRA     SHIFT4NXT
-IS7:
-        CMP.B   #$37,D1
-        BNE     IS8
-        CLR     D1
-        ADD.B    #$07,D2
-        BRA     SHIFT4NXT
-IS8:
-        CMP.B   #$38,D1
-        BNE     IS9
-        CLR     D1
-        ADD.B   #$08,D2
-        BRA     SHIFT4NXT
-IS9:
-        CMP.B   #$39,D1
-        BNE     ISA
-        CLR     D1
-        ADD.B   #$09,D2
-        BRA     SHIFT4NXT
-ISA:
-        CMP.B   #$41,D1
-        BNE     LCA
-        BEQ     ISAC
-LCA:
-        CMP.B   #$61,D1
-        BNE     ISB
-ISAC:
-        CLR     D1
-        ADD.B   #$0A,D2
-        BRA     SHIFT4NXT    
-ISB:
-        CMP.B   #$42,D1
-        BNE     LCB
-        BEQ     ISBC
-LCB:
-        CMP.B   #$62,D1
-        BNE     ISC
-ISBC:
-        CLR     D1
-        ADD.B   #$0B,D2
-        BRA     SHIFT4NXT
-ISC:
-        CMP.B   #$43,D1
-        BNE     LCC
-        BEQ     ISCC
-LCC:
-        CMP.B   #$63,D1
-        BNE     ISD
-ISCC:
-        CLR     D1
-        ADD.B   #$0C,D2        
-        BRA     SHIFT4NXT
-ISD:
-        CMP.B   #$44,D1
-        BNE     LCD
-        BEQ     ISDC
-LCD:
-        CMP.B   #$64,D1
-        BNE     ISE
-ISDC:
-        CLR     D1
-        ADD.B   #$0D,D2        
-        BRA     SHIFT4NXT
-ISE:
-        CMP.B   #$45,D1
-        BNE     LCE
-        BEQ     ISEC
-LCE:
-        CMP.B   #$65,D1
-        BNE     ISF
-ISEC:
-        CLR     D1
-        ADD.B   #$0E,D2        
-        BRA     SHIFT4NXT
-ISF:
-        CMP.B   #$46,D1
-        CLR     D1
-        ADD.B   #$0F,D2        
+ISLOW: * Checks if the character is a HEX letter in lowercase
+        SUB.B   #$20,D1     ; offset by 0x20
+        CMP.B   #$A,D1      ; if less than 0xA, invalid char
+        BLT     DONE
+        CMP.B   #$F,D1      ; if greater than 0xF, invalid char
+        BGT     DONE
         BRA     SHIFT4NXT
 * END * 
 
 SHIFT4NXT:
+        ADD.B  D1,D2
         CMP.B   #8,D3       ; check if reached max characters
                             ; otherwise bitshift for next char
         BEQ     ISLASTIN    ; check if asking for last
         ASL.L   #4,D2
         BRA     CHARLOOP
+PRESSEDENT:
+        ASR.L   #4,D2       ; remove the extra bit shift since when
+                            ; pressing enter max chars is 7
 ISLASTIN:
         CMP.B   #1,D7       ; if D7 is set, asking for last input
         BEQ     PRINTVAL        ; branch to the next place if asking for end
         CLR.L   D3          ; Clear character count
         MOVE.L  D2,STADR
-        CLR     D2
+        CLR.L   D2
         BRA     ENDADR      ; else ask for input
-PRESSEDENT:
-        ASR.L   #4,D2       ; remove the extra bit shift since when
-                            ; pressing enter max chars is 7
+
+INVALID:                    ; handle an invalid input
+        BRA     DONE
 PRINTVAL:
         MOVE.L  D2,ENADR    ; saving since latest address has not been saved yet
         
