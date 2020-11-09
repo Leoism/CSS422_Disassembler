@@ -193,7 +193,7 @@ PRINTVAL:
         MOVE.B  #16,D2
         MOVE.B  #15,D0
         TRAP    #15
-        CLR     D1
+        CLR.L     D1
 
         LEA     DISEN,A1
         MOVE.B  #13,D0
