@@ -80,7 +80,7 @@ PRESSEDENT:
                             ; pressing enter max chars is 7
 ISLASTIN:
         CMP.B   #1,D7       ; if D7 is set, asking for last input
-        BEQ     READMEM        ; branch to the next place if asking for end
+        BEQ     VALIDATEIN  ; branch to the next place if asking for end
         CLR.L   D3          ; Clear character count
         MOVE.L  D2,STADR
         CLR.L   D2
@@ -88,6 +88,13 @@ ISLASTIN:
 
 INVALID:                    ; handle an invalid input
         BRA     DONE
+VALIDATEIN:
+        MOVE.L  STADR,D1
+        CMP.L   D1,D2       ; check if ending is before start
+        BLT     INVALID
+        CMP.L   #$1000,D1 ; check if start is before program start
+        BLT     INVALID
+
 READMEM:
         MOVE.L  D2,ENADR    ; saving since latest address has not been saved yet
         CLR.L   D7
