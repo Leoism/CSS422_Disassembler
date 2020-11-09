@@ -91,7 +91,7 @@ INVALID:                    ; handle an invalid input
 VALIDATEIN:
         MOVE.L  STADR,D1
         CMP.L   D1,D2       ; check if ending is before start
-        BLT     INVALID
+        BLO     INVALID
         CMP.L   #$1000,D1 ; check if start is before program start
         BLT     INVALID
 
