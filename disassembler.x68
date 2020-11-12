@@ -108,8 +108,7 @@ VALIDATEIN:
         CMP.L   #$1000,D1   ; check if start is before program start
         BLT     INVALID
         LSR.B   #1,D1       ; check starting address to avoid loading invalid address
-                            ; 68k only allows loading even addresses 
-        BCS     INVALID
+        BCS     INVALID     ; 68k only allows loading even addresses 
 READMEM:
         CLR.L   D7
         CLR.L   D3     
@@ -117,10 +116,11 @@ READMEM:
         CLR.L   D1
         MOVE.L  STADR,A1    ; load starting address
 LOOPMEM:
-        MOVE.L  (A1)+,D2
-        CMP.L   ENADR,A1
+        MOVE.W  (A1)+,D2    ; each instruction is at least a word in machine code
+        * Do action here *
+        CMP.L   ENADR,A1    ; keep looping until reach the end
         BLT     LOOPMEM
-        
+
 * The following  sanity checking that addresses were stored *
         LEA     DISST,A1
         MOVE.B  #13,D0
