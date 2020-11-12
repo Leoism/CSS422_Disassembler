@@ -107,13 +107,9 @@ VALIDATEIN:
         BLO     INVALID
         CMP.L   #$1000,D1   ; check if start is before program start
         BLT     INVALID
-LOOPEND: * 68k only allows loading addresses with 0 at end
-        CMP.B   #4,D3
-        BGE     READMEM
         LSR.B   #1,D1       ; check starting address to avoid loading invalid address
+                            ; 68k only allows loading even addresses 
         BCS     INVALID
-        ADD.B   #1,D3
-        BRA     LOOPEND
 READMEM:
         CLR.L   D7
         CLR.L   D3     
@@ -125,6 +121,7 @@ LOOPMEM:
         CMP.L   ENADR,A1
         BLT     LOOPMEM
         
+* The following  sanity checking that addresses were stored *
         LEA     DISST,A1
         MOVE.B  #13,D0
         TRAP    #15
