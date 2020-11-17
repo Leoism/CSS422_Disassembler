@@ -159,7 +159,8 @@ PRINTNOP:
         TRAP    #15
 
         MOVE.W  (A2)+,D2    ; address should be incremented at the end of each print
-        BRA     LOOPMEM
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
 
 DONE:
         CLR.L   D1          ; clear up the data registers used.
