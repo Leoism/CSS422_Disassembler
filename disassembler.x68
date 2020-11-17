@@ -12,11 +12,16 @@ STADR   DS.L    1        ; allocate long in memory for
                          ; starting address
 ENADR   DS.L    1        ; allocate for end address
 
+NEWLINE DC.B    CR,LF,0
+
 ASKST   DC.B    'Please enter starting address in hex:',0
 ASKEN   DC.B    CR,LF,'Please enter ending address in hex:',0
 DISST   DC.B    CR,LF,'Starting Address:',0
 DISEN   DC.B    CR,LF,'Ending Address:',0
 INVALIDMSG DC.B    CR,LF,'You entered an invalid address. Try again.',CR,LF,0
+
+DISNOP  DC.B    'NOP',0
+DISDATA DC.B    ' DATA ',0
         ORG     $1000     ; start at 1000
 START:          
 
@@ -90,6 +95,7 @@ INVALID:                    ; handle an invalid input
         LEA     INVALIDMSG,A1
         MOVE.B  #13,D0
         TRAP    #15
+
         CLR.L   D0
         CLR.L   D1
         CLR.L   D2
@@ -114,32 +120,47 @@ READMEM:
         CLR.L   D3     
         CLR.L   D2
         CLR.L   D1
-        MOVE.L  STADR,A1    ; load starting address
+        MOVE.L  STADR,A2    ; load starting address
 LOOPMEM:
-        MOVE.W  (A1)+,D2    ; each instruction is at least a word in machine code
+        MOVE.W  (A2),D2    ; each instruction is at least a word in machine code
         * Do action here *
-        CMP.L   ENADR,A1    ; keep looping until reach the end
+DECODENOP:
+        MOVE.W  D2, D3      ; make a copy in d3 to run tests on the copy
+        EORI.W  #$4E71,D3   ; NOP XOR NOP would equal 0
+        CMP.W   #0,D3
+        BEQ     PRINTNOP
+INVALIDOP:                 ; when an opcode is invalid, print the address, 'data', and data in memory
+        MOVE.L  A2,D1      ; load the current address to print
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+
+        LEA     DISDATA,A1 ; load 'DATA' string to print
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        MOVE.W  (A2),D1    ; load data in A2 to print
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+
+        LEA     NEWLINE,A1 ; print a new line for reading purposes
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        MOVE.W  (A2)+,D2   ; increment the address
+        CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
+        BRA     DONE
 
-* The following  sanity checking that addresses were stored *
-        LEA     DISST,A1
-        MOVE.B  #13,D0
+PRINTNOP:
+        LEA     DISNOP,A1  ; display NOP string
+        MOVE.B  #13,D0     
         TRAP    #15
 
-        MOVE.L  STADR,D1
-        MOVE.B  #16,D2
-        MOVE.B  #15,D0
-        TRAP    #15
-        CLR.L     D1
+        MOVE.W  (A2)+,D2    ; address should be incremented at the end of each print
+        BRA     LOOPMEM
 
-        LEA     DISEN,A1
-        MOVE.B  #13,D0
-        TRAP    #15
-        
-        MOVE.L  ENADR,D1
-        MOVE.B  #16,D2
-        MOVE.B  #15,D0
-        TRAP    #15
 DONE:
         CLR.L   D1          ; clear up the data registers used.
         CLR.L   D2
