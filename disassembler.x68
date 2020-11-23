@@ -240,6 +240,35 @@ DECODE_ASR_MEM:
 DECODE_ROR_MEM:
         JSR     GET_MEM_SHIFT_DATA
         BRA     PRINTROR_MEM
+******** INVALID OUTPUT ********
+* THIS SHOULD ALWAYS BE THE LAST DECODE BRANCH
+* THAT WAY AFTER ATTEMPTING ALL ADDRESSING MODE AND FAILING
+* IT WILL FALLBACK TO THIS BRANCH
+INVALIDOP:                 ; when an opcode is invalid, print the address, 'data', and data in memory
+        MOVE.L  A2,D1      ; load the current address to print
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+
+        LEA     DISDATA,A1 ; load 'DATA' string to print
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        MOVE.W  (A2),D1    ; load data in A2 to print
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+
+        LEA     NEWLINE,A1 ; print a new line for reading purposes
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        JSR     CLEAR_ALL
+        MOVE.W  (A2)+,D2   ; increment the address
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+
 ******** COMMON SHIFT FUNCTIONS ********
 * Returns:
 *   D7 - Register
@@ -273,35 +302,6 @@ GET_MEM_SHIFT_DATA:
         MOVE.L  D2,D3
         JSR     DETERMINE_ADDR_MODE
         RTS
-******** INVALID OUTPUT ********
-* THIS SHOULD ALWAYS BE THE LAST DECODE BRANCH
-* THAT WAY AFTER ATTEMPTING ALL ADDRESSING MODE AND FAILING
-* IT WILL FALLBACK TO THIS BRANCH
-INVALIDOP:                 ; when an opcode is invalid, print the address, 'data', and data in memory
-        MOVE.L  A2,D1      ; load the current address to print
-        MOVE.B  #16,D2
-        MOVE.B  #15,D0
-        TRAP    #15
-
-        LEA     DISDATA,A1 ; load 'DATA' string to print
-        MOVE.B  #14,D0
-        TRAP    #15
-
-        MOVE.W  (A2),D1    ; load data in A2 to print
-        MOVE.B  #16,D2
-        MOVE.B  #15,D0
-        TRAP    #15
-
-        LEA     NEWLINE,A1 ; print a new line for reading purposes
-        MOVE.B  #14,D0
-        TRAP    #15
-
-        JSR     CLEAR_ALL
-        MOVE.W  (A2)+,D2   ; increment the address
-        CMP.L   ENADR,A2   ; keep looping until reach the end
-        BLT     LOOPMEM
-        BRA     DONE
-
 ******** DETERMINING ADDRESS MODES ********
 * D7 should contain register.
 * 000 for Word addressing
