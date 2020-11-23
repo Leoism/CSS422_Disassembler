@@ -177,59 +177,15 @@ DECODELSL_REG:
         BNE     DECODEROL_REG  ; rotates are set to 1
         BTST.L  #3,D3      ; arthimetic shift is set to 0
         BEQ     DECODEASL_REG
-        ANDI.B  #$7,D3     ; clear the 4th bit
-        MOVE.B  D3,D7      ; D7 will contain the register
-        MOVE.L  D2,D3      ; reset D3
-        LSR.W   #5,D3      ; test the i/r bit
-        ANDI.B  #$1,D3
-        MOVE.B  D3,D6      ; D6 will contain if count or Dn
-        MOVE.L  D2,D3
-        LSR.W   #6,D3
-        ANDI.W  #$3,D3
-        MOVE.B  D3,D5      ; D5 will contain size operation
-        MOVE.L  D2,D3
-        LSR.W   #5,D3
-        LSR.W   #4,D3
-        ANDI.W  #$7,D3
-        MOVE.B  D3,D4      ; D4 will contain count/reg
+        JSR     GET_REG_SHIFT_DATA
         BRA     PRINTLSL_REG       
 ******** DECODE ASL REG ********
 DECODEASL_REG:
-        MOVE.L  D2,D3
-        ANDI.L  #7,D3
-        MOVE.B  D3,D7      ; D7 will contain register
-        MOVE.L  D2,D3
-        LSR.L   #5,D3
-        ANDI.L  #1,D3
-        MOVE.B  D3,D6      ; D6 will contain if count or dn
-        MOVE.L  D2,D3
-        LSR.L   #6,D3
-        ANDI.L  #3,D3
-        MOVE.B  D3,D5      ; D5 will contain size
-        MOVE.L  D2,D3
-        LSR.L   #5,D3
-        LSR.L   #4,D3
-        ANDI.L  #7,D3
-        MOVE.B  D3,D4      ; D4 will contain count or register 
+        JSR     GET_REG_SHIFT_DATA 
         BRA     PRINTASL_REG
 ******** DECODE ROL REG ********
 DECODEROL_REG:
-        MOVE.L  D2,D3
-        ANDI.L  #7,D3
-        MOVE.B  D3,D7      ; D7 will contain register
-        MOVE.L  D2,D3
-        LSR.L   #5,D3
-        ANDI.L  #1,D3
-        MOVE.B  D3,D6      ; D6 will contain if count or dn
-        MOVE.L  D2,D3
-        LSR.L   #6,D3
-        ANDI.L  #3,D3
-        MOVE.B  D3,D5      ; D5 will contain size
-        MOVE.L  D2,D3
-        LSR.L   #5,D3
-        LSR.L   #4,D3
-        ANDI.L  #7,D3
-        MOVE.B  D3,D4      ; D4 will contain count or register 
+        JSR     GET_REG_SHIFT_DATA
         BRA     PRINTROL_REG
 ******** DECODE LSR REG ********
 DECODELSR_REG:
@@ -237,59 +193,15 @@ DECODELSR_REG:
         BNE     DECODEROR_REG  ; rotates are set to 1
         BTST.L  #3,D3      ; arthimetic shift is set to 0
         BEQ     DECODEASR_REG
-        ANDI.B  #$7,D3     ; clear the 4th bit
-        MOVE.B  D3,D7      ; D7 will contain the register
-        MOVE.L  D2,D3      ; reset D3
-        LSR.W   #5,D3      ; test the i/r bit
-        ANDI.B  #$1,D3
-        MOVE.B  D3,D6      ; D6 will contain if count or Dn
-        MOVE.L  D2,D3
-        LSR.W   #6,D3
-        ANDI.W  #$3,D3
-        MOVE.B  D3,D5      ; D5 will contain size operation
-        MOVE.L  D2,D3
-        LSR.W   #5,D3
-        LSR.W   #4,D3
-        ANDI.W  #$7,D3
-        MOVE.B  D3,D4      ; D4 will contain count/reg
+        JSR     GET_REG_SHIFT_DATA
         BRA     PRINTLSR_REG    
 ******** DECODE ASR REG ********
 DECODEASR_REG:
-        MOVE.L  D2,D3
-        ANDI.L  #7,D3
-        MOVE.B  D3,D7      ; D7 will contain register
-        MOVE.L  D2,D3
-        LSR.L   #5,D3
-        ANDI.L  #1,D3
-        MOVE.B  D3,D6      ; D6 will contain if count or dn
-        MOVE.L  D2,D3
-        LSR.L   #6,D3
-        ANDI.L  #3,D3
-        MOVE.B  D3,D5      ; D5 will contain size
-        MOVE.L  D2,D3
-        LSR.L   #5,D3
-        LSR.L   #4,D3
-        ANDI.L  #7,D3
-        MOVE.B  D3,D4      ; D4 will contain count or register 
+        JSR     GET_REG_SHIFT_DATA 
         BRA     PRINTASR_REG
 ******** DECODE ROR REG ********
 DECODEROR_REG:
-        MOVE.L  D2,D3
-        ANDI.L  #7,D3
-        MOVE.B  D3,D7      ; D7 will contain register
-        MOVE.L  D2,D3
-        LSR.L   #5,D3
-        ANDI.L  #1,D3
-        MOVE.B  D3,D6      ; D6 will contain if count or dn
-        MOVE.L  D2,D3
-        LSR.L   #6,D3
-        ANDI.L  #3,D3
-        MOVE.B  D3,D5      ; D5 will contain size
-        MOVE.L  D2,D3
-        LSR.L   #5,D3
-        LSR.L   #4,D3
-        ANDI.L  #7,D3
-        MOVE.B  D3,D4      ; D4 will contain count or register 
+        JSR     GET_REG_SHIFT_DATA
         BRA     PRINTROR_REG
 ******** DECODE MEMORY SHIFTS ********
 DECODE_SHIFT_MEM:
@@ -302,24 +214,15 @@ DECODE_LSL_MEM:
         BNE     DECODE_ROL_MEM
         BTST.L  #9,D3
         BEQ     DECODE_ASL_MEM
-        ANDI.L  #$7,D3
-        MOVE.B  D3,D7     ; D7 will have register
-        MOVE.L  D2,D3
-        JSR     DETERMINE_ADDR_MODE
+        JSR     GET_MEM_SHIFT_DATA
         BRA     PRINTLSL_MEM
 ******** DECODE ASL MEM ********
 DECODE_ASL_MEM:
-        ANDI.L  #$7,D3
-        MOVE.B  D3,D7     ; D7 will have register
-        MOVE.L  D2,D3
-        JSR     DETERMINE_ADDR_MODE
+        JSR     GET_MEM_SHIFT_DATA
         BRA     PRINTASL_MEM
 ******** DECODE ROL MEM ********
 DECODE_ROL_MEM:
-        ANDI.L  #$7,D3
-        MOVE.B  D3,D7     ; D7 will have register
-        MOVE.L  D2,D3
-        JSR     DETERMINE_ADDR_MODE
+        JSR     GET_MEM_SHIFT_DATA
         BRA     PRINTROL_MEM
 ******** DECODE LSR MEM ********
 DECODE_LSR_MEM:
@@ -327,25 +230,49 @@ DECODE_LSR_MEM:
         BNE     DECODE_ROR_MEM
         BTST.L  #9,D3
         BEQ     DECODE_ASR_MEM
-        ANDI.L  #$7,D3
-        MOVE.B  D3,D7     ; D7 will have register
-        MOVE.L  D2,D3
-        JSR     DETERMINE_ADDR_MODE
+        JSR     GET_MEM_SHIFT_DATA
         BRA     PRINTLSR_MEM
 ******** DECODE ASR MEM ********
 DECODE_ASR_MEM:
-        ANDI.L  #$7,D3
-        MOVE.B  D3,D7     ; D7 will have register
-        MOVE.L  D2,D3
-        JSR     DETERMINE_ADDR_MODE
+        JSR     GET_MEM_SHIFT_DATA
         BRA     PRINTASR_MEM
 ******** DECODE ROR MEM ********
 DECODE_ROR_MEM:
+        JSR     GET_MEM_SHIFT_DATA
+        BRA     PRINTROR_MEM
+******** COMMON SHIFT FUNCTIONS ********
+* Returns:
+*   D7 - Register
+*   D6 - 1 or 0, determines if count or data register
+*   D5 - Contains size of operation
+*   D4 - Contains count or register as determined by D6
+GET_REG_SHIFT_DATA:
+        MOVE.L  D2,D3
+        ANDI.B  #$7,D3     ; clear the 4th bit
+        MOVE.B  D3,D7      ; D7 will contain the register
+        MOVE.L  D2,D3      ; reset D3
+        LSR.W   #5,D3      ; test the i/r bit
+        ANDI.B  #$1,D3
+        MOVE.B  D3,D6      ; D6 will contain if count or Dn
+        MOVE.L  D2,D3
+        LSR.W   #6,D3
+        ANDI.W  #$3,D3
+        MOVE.B  D3,D5      ; D5 will contain size operation
+        MOVE.L  D2,D3
+        LSR.W   #5,D3
+        LSR.W   #4,D3
+        ANDI.W  #$7,D3
+        MOVE.B  D3,D4      ; D4 will contain count/reg
+        RTS
+* Returns:
+*   D7 - Contains register (word or long addressing)
+*   D6 - Contains the address 
+GET_MEM_SHIFT_DATA:
         ANDI.L  #$7,D3
         MOVE.B  D3,D7     ; D7 will have register
         MOVE.L  D2,D3
         JSR     DETERMINE_ADDR_MODE
-        BRA     PRINTROR_MEM
+        RTS
 ******** INVALID OUTPUT ********
 * THIS SHOULD ALWAYS BE THE LAST DECODE BRANCH
 * THAT WAY AFTER ATTEMPTING ALL ADDRESSING MODE AND FAILING
@@ -426,6 +353,28 @@ PRINT_SHIFT_REG_CONT:
         MOVE.B  #15,D0
         TRAP    #15
         RTS
+PRINT_REG_SHIFT_INFO:
+        JSR     PRINTSIZEOP
+        JSR     SHIFT_IN1
+        JSR     PRINTCOMMA
+        MOVE.B  D7,D4
+        JSR     PRINTDn
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        RTS
+PRINT_MEM_SHIFT_INFO:
+        MOVE.B  #1,D5
+        JSR     PRINTSIZEOP
+
+        JSR     PRINTDOLLAR
+        MOVE.L  D6,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        RTS
 ******** PRINT REGISTER SHIFTS ********
 ******** PRINT LOGIC REGISTER SHIFTS ********
 PRINTLSL_REG:
@@ -435,13 +384,7 @@ PRINTLSL_REG:
         MOVE.B  #14,D0
         TRAP    #15
 
-        JSR     PRINTSIZEOP
-        JSR     SHIFT_IN1
-        JSR     PRINTCOMMA
-        MOVE.B  D7,D4
-        JSR     PRINTDn
-        JSR     PRINTNEWLINE
-        JSR     CLEAR_ALL
+        JSR     PRINT_REG_SHIFT_INFO
         MOVE.W  (A2)+,D2    ; address should be incremented at the end of each print
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
@@ -453,13 +396,7 @@ PRINTLSR_REG:
         MOVE.B  #14,D0
         TRAP    #15
 
-        JSR     PRINTSIZEOP
-        JSR     SHIFT_IN1
-        JSR     PRINTCOMMA
-        MOVE.B  D7,D4
-        JSR     PRINTDn
-        JSR     PRINTNEWLINE
-        JSR     CLEAR_ALL
+        JSR     PRINT_REG_SHIFT_INFO
         MOVE.W  (A2)+,D2    ; address should be incremented at the end of each print
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
@@ -472,13 +409,7 @@ PRINTASL_REG:
         MOVE.B  #14,D0
         TRAP    #15
 
-        JSR     PRINTSIZEOP
-        JSR     SHIFT_IN1
-        JSR     PRINTCOMMA
-        MOVE.B  D7,D4
-        JSR     PRINTDn
-        JSR     PRINTNEWLINE
-        JSR     CLEAR_ALL
+        JSR     PRINT_REG_SHIFT_INFO
         MOVE.W  (A2)+,D2    ; address should be incremented at the end of each print
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
@@ -490,13 +421,7 @@ PRINTASR_REG:
         MOVE.B  #14,D0
         TRAP    #15
 
-        JSR     PRINTSIZEOP
-        JSR     SHIFT_IN1
-        JSR     PRINTCOMMA
-        MOVE.B  D7,D4
-        JSR     PRINTDn
-        JSR     PRINTNEWLINE
-        JSR     CLEAR_ALL
+        JSR     PRINT_REG_SHIFT_INFO
         MOVE.W  (A2)+,D2    ; address should be incremented at the end of each print
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
@@ -509,13 +434,7 @@ PRINTROL_REG:
         MOVE.B  #14,D0
         TRAP    #15
 
-        JSR     PRINTSIZEOP
-        JSR     SHIFT_IN1
-        JSR     PRINTCOMMA
-        MOVE.B  D7,D4
-        JSR     PRINTDn
-        JSR     PRINTNEWLINE
-        JSR     CLEAR_ALL
+        JSR     PRINT_REG_SHIFT_INFO
         MOVE.W  (A2)+,D2    ; address should be incremented at the end of each print
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
@@ -527,13 +446,7 @@ PRINTROR_REG:
         MOVE.B  #14,D0
         TRAP    #15
 
-        JSR     PRINTSIZEOP
-        JSR     SHIFT_IN1
-        JSR     PRINTCOMMA
-        MOVE.B  D7,D4
-        JSR     PRINTDn
-        JSR     PRINTNEWLINE
-        JSR     CLEAR_ALL
+        JSR     PRINT_REG_SHIFT_INFO
         MOVE.W  (A2)+,D2    ; address should be incremented at the end of each print
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
@@ -546,17 +459,7 @@ PRINTLSL_MEM:
         MOVE.B  #14,D0
         TRAP    #15
 
-        MOVE.B  #1,D5
-        JSR     PRINTSIZEOP
-
-        JSR     PRINTDOLLAR
-        MOVE.L  D6,D1
-        MOVE.B  #16,D2
-        MOVE.B  #15,D0
-        TRAP    #15
-
-        JSR     PRINTNEWLINE
-        JSR     CLEAR_ALL
+        JSR     PRINT_MEM_SHIFT_INFO
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
         BRA     DONE
@@ -566,17 +469,7 @@ PRINTLSR_MEM:
         MOVE.B  #14,D0
         TRAP    #15
 
-        MOVE.B  #1,D5
-        JSR     PRINTSIZEOP
-
-        JSR     PRINTDOLLAR
-        MOVE.L  D6,D1
-        MOVE.B  #16,D2
-        MOVE.B  #15,D0
-        TRAP    #15
-
-        JSR     PRINTNEWLINE
-        JSR     CLEAR_ALL
+        JSR     PRINT_MEM_SHIFT_INFO
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
         BRA     DONE
@@ -587,17 +480,7 @@ PRINTASL_MEM:
         MOVE.B  #14,D0
         TRAP    #15
 
-        MOVE.B  #1,D5
-        JSR     PRINTSIZEOP
-
-        JSR     PRINTDOLLAR
-        MOVE.L  D6,D1
-        MOVE.B  #16,D2
-        MOVE.B  #15,D0
-        TRAP    #15
-
-        JSR     PRINTNEWLINE
-        JSR     CLEAR_ALL
+        JSR     PRINT_MEM_SHIFT_INFO
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
         BRA     DONE
@@ -607,17 +490,7 @@ PRINTASR_MEM:
         MOVE.B  #14,D0
         TRAP    #15
 
-        MOVE.B  #1,D5
-        JSR     PRINTSIZEOP
-
-        JSR     PRINTDOLLAR
-        MOVE.L  D6,D1
-        MOVE.B  #16,D2
-        MOVE.B  #15,D0
-        TRAP    #15
-
-        JSR     PRINTNEWLINE
-        JSR     CLEAR_ALL
+        JSR     PRINT_MEM_SHIFT_INFO
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
         BRA     DONE
@@ -627,17 +500,7 @@ PRINTROL_MEM:
         MOVE.B  #14,D0
         TRAP    #15
 
-        MOVE.B  #1,D5
-        JSR     PRINTSIZEOP
-
-        JSR     PRINTDOLLAR
-        MOVE.L  D6,D1
-        MOVE.B  #16,D2
-        MOVE.B  #15,D0
-        TRAP    #15
-
-        JSR     PRINTNEWLINE
-        JSR     CLEAR_ALL
+        JSR     PRINT_MEM_SHIFT_INFO
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
         BRA     DONE
@@ -647,17 +510,7 @@ PRINTROR_MEM:
         MOVE.B  #14,D0
         TRAP    #15
 
-        MOVE.B  #1,D5
-        JSR     PRINTSIZEOP
-
-        JSR     PRINTDOLLAR
-        MOVE.L  D6,D1
-        MOVE.B  #16,D2
-        MOVE.B  #15,D0
-        TRAP    #15
-
-        JSR     PRINTNEWLINE
-        JSR     CLEAR_ALL
+        JSR     PRINT_MEM_SHIFT_INFO
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
         BRA     DONE
