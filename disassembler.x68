@@ -297,8 +297,10 @@ GET_REG_SHIFT_DATA:
 *   D7 - Contains register (word or long addressing)
 *   D6 - Contains the address 
 GET_MEM_SHIFT_DATA:
+        BTST.L  #11,D3     ; the 11th bit must always be 0 for shifts
+        BNE     INVALIDOP
         ANDI.L  #$7,D3
-        MOVE.B  D3,D7     ; D7 will have register
+        MOVE.B  D3,D7      ; D7 will have register
         MOVE.L  D2,D3
         JSR     DETERMINE_ADDR_MODE
         RTS
