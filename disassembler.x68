@@ -30,6 +30,8 @@ DISLSL  DC.B    'LSL',0
 DISLSR  DC.B    'LSR',0
 DISASL  DC.B    'ASL',0
 DISASR  DC.B    'ASR',0
+DISROL  DC.B    'ROL',0
+DISROR  DC.B    'ROR',0
 ******** SIZE PRINTS ********
 DISB    DC.B    '.B  ',0
 DISW    DC.B    '.W  ',0
@@ -161,8 +163,8 @@ DECODESHIFTS:
         CMPI.W  #$1000,D3
         BGE     INVALIDOP  ; REPLACE WITH OPCODES AS THEY GET DONE
         LSR.L   #6,D3      
-        EORI.B  #$3,D3
-        CMP.B   #0,D3
+        ANDI.B  #$3,D3
+        CMP.B   #$3,D3
         BEQ     DECODE_SHIFT_MEM  ; if 0 then a right shift.
 ******** DECODE REGISTER SHIFTS ********
 DECODE_REG:
@@ -210,8 +212,25 @@ DECODEASL_REG:
         ANDI.L  #7,D3
         MOVE.B  D3,D4      ; D4 will contain count or register 
         BRA     PRINTASL_REG
+******** DECODE ROL REG ********
 DECODEROL_REG:
-
+        MOVE.L  D2,D3
+        ANDI.L  #7,D3
+        MOVE.B  D3,D7      ; D7 will contain register
+        MOVE.L  D2,D3
+        LSR.L   #5,D3
+        ANDI.L  #1,D3
+        MOVE.B  D3,D6      ; D6 will contain if count or dn
+        MOVE.L  D2,D3
+        LSR.L   #6,D3
+        ANDI.L  #3,D3
+        MOVE.B  D3,D5      ; D5 will contain size
+        MOVE.L  D2,D3
+        LSR.L   #5,D3
+        LSR.L   #4,D3
+        ANDI.L  #7,D3
+        MOVE.B  D3,D4      ; D4 will contain count or register 
+        BRA     PRINTROL_REG
 ******** DECODE LSR REG ********
 DECODELSR_REG:
         BTST.L  #4,D3      ; shifts are set to 0
@@ -253,7 +272,25 @@ DECODEASR_REG:
         ANDI.L  #7,D3
         MOVE.B  D3,D4      ; D4 will contain count or register 
         BRA     PRINTASR_REG
+******** DECODE ROR REG ********
 DECODEROR_REG:
+        MOVE.L  D2,D3
+        ANDI.L  #7,D3
+        MOVE.B  D3,D7      ; D7 will contain register
+        MOVE.L  D2,D3
+        LSR.L   #5,D3
+        ANDI.L  #1,D3
+        MOVE.B  D3,D6      ; D6 will contain if count or dn
+        MOVE.L  D2,D3
+        LSR.L   #6,D3
+        ANDI.L  #3,D3
+        MOVE.B  D3,D5      ; D5 will contain size
+        MOVE.L  D2,D3
+        LSR.L   #5,D3
+        LSR.L   #4,D3
+        ANDI.L  #7,D3
+        MOVE.B  D3,D4      ; D4 will contain count or register 
+        BRA     PRINTROR_REG
 ******** DECODE MEMORY SHIFTS ********
 DECODE_SHIFT_MEM:
         MOVE.L  D2,D3       ; restore D3 
@@ -277,7 +314,13 @@ DECODE_ASL_MEM:
         MOVE.L  D2,D3
         JSR     DETERMINE_ADDR_MODE
         BRA     PRINTASL_MEM
+******** DECODE ROL MEM ********
 DECODE_ROL_MEM:
+        ANDI.L  #$7,D3
+        MOVE.B  D3,D7     ; D7 will have register
+        MOVE.L  D2,D3
+        JSR     DETERMINE_ADDR_MODE
+        BRA     PRINTROL_MEM
 ******** DECODE LSR MEM ********
 DECODE_LSR_MEM:
         BTST.L  #10,D3
@@ -296,7 +339,13 @@ DECODE_ASR_MEM:
         MOVE.L  D2,D3
         JSR     DETERMINE_ADDR_MODE
         BRA     PRINTASR_MEM
+******** DECODE ROR MEM ********
 DECODE_ROR_MEM:
+        ANDI.L  #$7,D3
+        MOVE.B  D3,D7     ; D7 will have register
+        MOVE.L  D2,D3
+        JSR     DETERMINE_ADDR_MODE
+        BRA     PRINTROR_MEM
 ******** INVALID OUTPUT ********
 * THIS SHOULD ALWAYS BE THE LAST DECODE BRANCH
 * THAT WAY AFTER ATTEMPTING ALL ADDRESSING MODE AND FAILING
@@ -452,6 +501,43 @@ PRINTASR_REG:
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
         BRA     DONE
+******** PRINT ROTATATE SHIFTS ********
+PRINTROL_REG:
+        * D7: register, D6: is Count/Dn
+        * D5: Size Op,  D4: Count/Dn
+        LEA     DISROL,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        JSR     PRINTSIZEOP
+        JSR     SHIFT_IN1
+        JSR     PRINTCOMMA
+        MOVE.B  D7,D4
+        JSR     PRINTDn
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        MOVE.W  (A2)+,D2    ; address should be incremented at the end of each print
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+PRINTROR_REG:
+        * D7: register, D6: is Count/Dn
+        * D5: Size Op,  D4: Count/Dn
+        LEA     DISROR,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        JSR     PRINTSIZEOP
+        JSR     SHIFT_IN1
+        JSR     PRINTCOMMA
+        MOVE.B  D7,D4
+        JSR     PRINTDn
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        MOVE.W  (A2)+,D2    ; address should be incremented at the end of each print
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
 ******** PRINT MEMORY SHIFTS ********
 ******** PRINT LOGIC MEMORY SHIFTS ********
 PRINTLSL_MEM:
@@ -518,6 +604,46 @@ PRINTASL_MEM:
 PRINTASR_MEM:
         * D6 contains the EA
         LEA     DISASR,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        MOVE.B  #1,D5
+        JSR     PRINTSIZEOP
+
+        JSR     PRINTDOLLAR
+        MOVE.L  D6,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+PRINTROL_MEM:
+        * D6 contains the EA
+        LEA     DISROL,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        MOVE.B  #1,D5
+        JSR     PRINTSIZEOP
+
+        JSR     PRINTDOLLAR
+        MOVE.L  D6,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+PRINTROR_MEM:
+        * D6 contains the EA
+        LEA     DISROR,A1
         MOVE.B  #14,D0
         TRAP    #15
 
