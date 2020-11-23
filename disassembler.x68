@@ -12,15 +12,42 @@ STADR   DS.L    1        ; allocate long in memory for
                          ; starting address
 ENADR   DS.L    1        ; allocate for end address
 
-NEWLINE DC.B    CR,LF,0
-
+******** USER INPUT/OUTPUT/INTERACTIONS ********
 ASKST   DC.B    'Please enter starting address in hex:',0
 ASKEN   DC.B    CR,LF,'Please enter ending address in hex:',0
 DISST   DC.B    CR,LF,'Starting Address:',0
 DISEN   DC.B    CR,LF,'Ending Address:',0
 INVALIDMSG DC.B    CR,LF,'You entered an invalid address. Try again.',CR,LF,0
 
+******** COMMON CHARACTERS ********
+NEWLINE DC.B    CR,LF,0
+DISCOMMA DC.B   ',',0
+DISPOUND DC.B   '#',0
+DISDOLLAR DC.B  '$',0
+******** INSTRUCTION PRINTS ********
 DISNOP  DC.B    'NOP',0
+DISLSL  DC.B    'LSL',0
+DISLSR  DC.B    'LSR',0
+DISASL  DC.B    'ASL',0
+DISASR  DC.B    'ASR',0
+DISROL  DC.B    'ROL',0
+DISROR  DC.B    'ROR',0
+******** SIZE PRINTS ********
+DISB    DC.B    '.B  ',0
+DISW    DC.B    '.W  ',0
+DISL    DC.B    '.L  ',0
+
+******** DATAREGISTER/ADDRESS REGISTER PRINTS ********
+DISD0   DC.B    'D0',0
+DISD1   DC.B    'D1',0
+DISD2   DC.B    'D2',0
+DISD3   DC.B    'D3',0
+DISD4   DC.B    'D4',0
+DISD5   DC.B    'D5',0
+DISD6   DC.B    'D6',0
+DISD7   DC.B    'D7',0
+
+******** INVALID DATA ********
 DISDATA DC.B    ' DATA ',0
         ORG     $1000     ; start at 1000
 START:          
@@ -129,6 +156,94 @@ DECODENOP:
         EORI.W  #$4E71,D3   ; NOP XOR NOP would equal 0
         CMP.W   #0,D3
         BEQ     PRINTNOP
+******** DECODE SHIFTS ********
+DECODESHIFTS:
+        MOVE.W  D2,D3
+        EORI.W  #$E000,D3
+        CMPI.W  #$1000,D3
+        BGE     INVALIDOP  ; REPLACE WITH OPCODES AS THEY GET DONE
+        LSR.L   #6,D3      
+        ANDI.B  #$3,D3
+        CMP.B   #$3,D3
+        BEQ     DECODE_SHIFT_MEM  ; if 0 then a right shift.
+******** DECODE REGISTER SHIFTS ********
+DECODE_REG:
+        MOVE.L  D2,D3       ; restore D3 
+        BTST    #8,D3
+        BEQ     DECODELSR_REG
+******** DECODE LSL REG ******** 
+DECODELSL_REG:
+        BTST.L  #4,D3      ; shifts are set to 0
+        BNE     DECODEROL_REG  ; rotates are set to 1
+        BTST.L  #3,D3      ; arthimetic shift is set to 0
+        BEQ     DECODEASL_REG
+        JSR     GET_REG_SHIFT_DATA
+        BRA     PRINTLSL_REG       
+******** DECODE ASL REG ********
+DECODEASL_REG:
+        JSR     GET_REG_SHIFT_DATA 
+        BRA     PRINTASL_REG
+******** DECODE ROL REG ********
+DECODEROL_REG:
+        JSR     GET_REG_SHIFT_DATA
+        BRA     PRINTROL_REG
+******** DECODE LSR REG ********
+DECODELSR_REG:
+        BTST.L  #4,D3      ; shifts are set to 0
+        BNE     DECODEROR_REG  ; rotates are set to 1
+        BTST.L  #3,D3      ; arthimetic shift is set to 0
+        BEQ     DECODEASR_REG
+        JSR     GET_REG_SHIFT_DATA
+        BRA     PRINTLSR_REG    
+******** DECODE ASR REG ********
+DECODEASR_REG:
+        JSR     GET_REG_SHIFT_DATA 
+        BRA     PRINTASR_REG
+******** DECODE ROR REG ********
+DECODEROR_REG:
+        JSR     GET_REG_SHIFT_DATA
+        BRA     PRINTROR_REG
+******** DECODE MEMORY SHIFTS ********
+DECODE_SHIFT_MEM:
+        MOVE.L  D2,D3       ; restore D3 
+        BTST.L  #8,D3
+        BEQ     DECODE_LSR_MEM
+******** DECODE LSL MEM ********
+DECODE_LSL_MEM:
+        BTST.L  #10,D3
+        BNE     DECODE_ROL_MEM
+        BTST.L  #9,D3
+        BEQ     DECODE_ASL_MEM
+        JSR     GET_MEM_SHIFT_DATA
+        BRA     PRINTLSL_MEM
+******** DECODE ASL MEM ********
+DECODE_ASL_MEM:
+        JSR     GET_MEM_SHIFT_DATA
+        BRA     PRINTASL_MEM
+******** DECODE ROL MEM ********
+DECODE_ROL_MEM:
+        JSR     GET_MEM_SHIFT_DATA
+        BRA     PRINTROL_MEM
+******** DECODE LSR MEM ********
+DECODE_LSR_MEM:
+        BTST.L  #10,D3
+        BNE     DECODE_ROR_MEM
+        BTST.L  #9,D3
+        BEQ     DECODE_ASR_MEM
+        JSR     GET_MEM_SHIFT_DATA
+        BRA     PRINTLSR_MEM
+******** DECODE ASR MEM ********
+DECODE_ASR_MEM:
+        JSR     GET_MEM_SHIFT_DATA
+        BRA     PRINTASR_MEM
+******** DECODE ROR MEM ********
+DECODE_ROR_MEM:
+        JSR     GET_MEM_SHIFT_DATA
+        BRA     PRINTROR_MEM
+******** INVALID OUTPUT ********
+* THIS SHOULD ALWAYS BE THE LAST DECODE BRANCH
+* THAT WAY AFTER ATTEMPTING ALL ADDRESSING MODE AND FAILING
+* IT WILL FALLBACK TO THIS BRANCH
 INVALIDOP:                 ; when an opcode is invalid, print the address, 'data', and data in memory
         MOVE.L  A2,D1      ; load the current address to print
         MOVE.B  #16,D2
@@ -148,20 +263,376 @@ INVALIDOP:                 ; when an opcode is invalid, print the address, 'data
         MOVE.B  #14,D0
         TRAP    #15
 
+        JSR     CLEAR_ALL
         MOVE.W  (A2)+,D2   ; increment the address
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
         BRA     DONE
 
+******** COMMON SHIFT FUNCTIONS ********
+* Returns:
+*   D7 - Register
+*   D6 - 1 or 0, determines if count or data register
+*   D5 - Contains size of operation
+*   D4 - Contains count or register as determined by D6
+GET_REG_SHIFT_DATA:
+        MOVE.L  D2,D3
+        ANDI.B  #$7,D3     ; clear the 4th bit
+        MOVE.B  D3,D7      ; D7 will contain the register
+        MOVE.L  D2,D3      ; reset D3
+        LSR.W   #5,D3      ; test the i/r bit
+        ANDI.B  #$1,D3
+        MOVE.B  D3,D6      ; D6 will contain if count or Dn
+        MOVE.L  D2,D3
+        LSR.W   #6,D3
+        ANDI.W  #$3,D3
+        MOVE.B  D3,D5      ; D5 will contain size operation
+        MOVE.L  D2,D3
+        LSR.W   #5,D3
+        LSR.W   #4,D3
+        ANDI.W  #$7,D3
+        MOVE.B  D3,D4      ; D4 will contain count/reg
+        RTS
+* Returns:
+*   D7 - Contains register (word or long addressing)
+*   D6 - Contains the address 
+GET_MEM_SHIFT_DATA:
+        BTST.L  #11,D3     ; the 11th bit must always be 0 for shifts
+        BNE     INVALIDOP
+        ANDI.L  #$7,D3
+        MOVE.B  D3,D7      ; D7 will have register
+        MOVE.L  D2,D3
+        JSR     DETERMINE_ADDR_MODE
+        RTS
+******** DETERMINING ADDRESS MODES ********
+* D7 should contain register.
+* 000 for Word addressing
+* 001 for Long addressing
+DETERMINE_ADDR_MODE:
+        CMP.B   #0,D7
+        BEQ     WORD_ADDR
+        CMP.B   #1,D7
+        BEQ     LONG_ADDR
+        RTS
+WORD_ADDR:
+        * Increment PC Counter
+        CMP.W   #0,(A2)+   ; instructions are word size
+        MOVE.W  (A2)+,D6    ; D6 will contain the address
+        RTS
+LONG_ADDR:
+        * Increment PC Counter
+        CMP.W   #0,(A2)+   ; instructions are word size
+        MOVE.L  (A2)+,D6    ; D6 will contain the address
+        RTS
+************************************        
+******** PRINT INSTRUCTIONS ********
+************************************
 PRINTNOP:
         LEA     DISNOP,A1  ; display NOP string
-        MOVE.B  #13,D0     
+        MOVE.B  #14,D0     
         TRAP    #15
-
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
         MOVE.W  (A2)+,D2    ; address should be incremented at the end of each print
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
+        BRA     DONE
 
+******** PRINT SHIFT INSTRUCTIONS ********
+******** COMMON SHIFT FUNCS ********
+SHIFT_IN1:
+        CMPI.B  #0,D6
+        BEQ     PRINT_SHIFT_REG_CONT
+        JSR     PRINTDn
+        RTS
+PRINT_SHIFT_REG_CONT:
+        LEA     DISPOUND,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        MOVE.B  D4,D1
+        MOVE.B  #10,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        RTS
+PRINT_REG_SHIFT_INFO:
+        JSR     PRINTSIZEOP
+        JSR     SHIFT_IN1
+        JSR     PRINTCOMMA
+        MOVE.B  D7,D4
+        JSR     PRINTDn
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        RTS
+PRINT_MEM_SHIFT_INFO:
+        MOVE.B  #1,D5
+        JSR     PRINTSIZEOP
+
+        JSR     PRINTDOLLAR
+        MOVE.L  D6,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        RTS
+******** PRINT REGISTER SHIFTS ********
+******** PRINT LOGIC REGISTER SHIFTS ********
+PRINTLSL_REG:
+        * D7: register, D6: is Count/Dn
+        * D5: Size Op,  D4: Count/Dn
+        LEA     DISLSL,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        JSR     PRINT_REG_SHIFT_INFO
+        MOVE.W  (A2)+,D2    ; address should be incremented at the end of each print
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+PRINTLSR_REG:
+        * D7: register, D6: is Count/Dn
+        * D5: Size Op,  D4: Count/Dn
+        LEA     DISLSR,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        JSR     PRINT_REG_SHIFT_INFO
+        MOVE.W  (A2)+,D2    ; address should be incremented at the end of each print
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+******** PRINT ARITHMETIC REGISTER SHIFTS ********
+PRINTASL_REG:
+        * D7: register, D6: is Count/Dn
+        * D5: Size Op,  D4: Count/Dn
+        LEA     DISASL,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        JSR     PRINT_REG_SHIFT_INFO
+        MOVE.W  (A2)+,D2    ; address should be incremented at the end of each print
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+PRINTASR_REG:
+        * D7: register, D6: is Count/Dn
+        * D5: Size Op,  D4: Count/Dn
+        LEA     DISASR,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        JSR     PRINT_REG_SHIFT_INFO
+        MOVE.W  (A2)+,D2    ; address should be incremented at the end of each print
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+******** PRINT ROTATATE SHIFTS ********
+PRINTROL_REG:
+        * D7: register, D6: is Count/Dn
+        * D5: Size Op,  D4: Count/Dn
+        LEA     DISROL,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        JSR     PRINT_REG_SHIFT_INFO
+        MOVE.W  (A2)+,D2    ; address should be incremented at the end of each print
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+PRINTROR_REG:
+        * D7: register, D6: is Count/Dn
+        * D5: Size Op,  D4: Count/Dn
+        LEA     DISROR,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        JSR     PRINT_REG_SHIFT_INFO
+        MOVE.W  (A2)+,D2    ; address should be incremented at the end of each print
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+******** PRINT MEMORY SHIFTS ********
+******** PRINT LOGIC MEMORY SHIFTS ********
+PRINTLSL_MEM:
+        * D6 contains the EA
+        LEA     DISLSL,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        JSR     PRINT_MEM_SHIFT_INFO
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+PRINTLSR_MEM:
+        * D6 contains the EA
+        LEA     DISLSR,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        JSR     PRINT_MEM_SHIFT_INFO
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+******** PRINT ARITHMETIC MEMORY SHIFTS ********
+PRINTASL_MEM:
+        * D6 contains the EA
+        LEA     DISASL,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        JSR     PRINT_MEM_SHIFT_INFO
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+PRINTASR_MEM:
+        * D6 contains the EA
+        LEA     DISASR,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        JSR     PRINT_MEM_SHIFT_INFO
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+PRINTROL_MEM:
+        * D6 contains the EA
+        LEA     DISROL,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        JSR     PRINT_MEM_SHIFT_INFO
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+PRINTROR_MEM:
+        * D6 contains the EA
+        LEA     DISROR,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        JSR     PRINT_MEM_SHIFT_INFO
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+****************************************
+******** PRINT INSTRUCTION SIZE ********
+****************************************
+PRINTSIZEOP:
+        CMPI.B  #$0,D5
+        BEQ     PRINTB
+        CMPI.B  #$1,D5
+        BEQ     PRINTW
+        CMPI.B  #$2,D5
+        BEQ     PRINTL
+        RTS
+PRINTB:
+        LEA     DISB,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        RTS
+PRINTW:
+        LEA     DISW,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        RTS
+PRINTL:
+        LEA     DISL,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        RTS
+**************************************
+******** PRINT DATA REGISTERS ********
+**************************************
+* D4 should contain data register
+PRINTDn:
+        CMP.B #$7,D4
+        BEQ PRINTD7
+        CMP.B #$6,D4
+        BEQ PRINTD6
+        CMP.B #$5,D4
+        BEQ PRINTD5
+        CMP.B #$4,D4
+        BEQ PRINTD4
+        CMP.B #$3,D4
+        BEQ PRINTD3
+        CMP.B #$2,D4
+        BEQ PRINTD2
+        CMP.B #$1,D4
+        BEQ PRINTD1
+        CMP.B #$0,D4
+        BEQ PRINTD0
+PRINTD0:
+        LEA     DISD0,A1
+        MOVE.B  #14, D0
+        TRAP    #15
+        RTS
+PRINTD1:
+        LEA     DISD1,A1
+        MOVE.B  #14, D0
+        TRAP    #15
+        RTS
+PRINTD2:
+        LEA     DISD2,A1
+        MOVE.B  #14, D0
+        TRAP    #15
+        RTS
+PRINTD3:
+        LEA     DISD3,A1
+        MOVE.B  #14, D0
+        TRAP    #15
+        RTS
+PRINTD4:
+        LEA     DISD4,A1
+        MOVE.B  #14, D0
+        TRAP    #15
+        RTS
+PRINTD5:
+        LEA     DISD5,A1
+        MOVE.B  #14, D0
+        TRAP    #15
+        RTS
+PRINTD6:
+        LEA     DISD6,A1
+        MOVE.B  #14, D0
+        TRAP    #15
+        RTS
+PRINTD7:
+        LEA     DISD7,A1
+        MOVE.B  #14, D0
+        TRAP    #15
+        RTS
+****************************************
+******** PRINT COMMON CHARCTERS ********
+****************************************
+PRINTCOMMA:
+        LEA     DISCOMMA,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        RTS
+PRINTNEWLINE:
+        LEA     NEWLINE,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        RTS
+PRINTDOLLAR:
+        LEA     DISDOLLAR,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        RTS
+***********************
+******** MISC. ********
+***********************
+CLEAR_ALL:
+        CLR.L   D1
+        CLR.L   D2
+        CLR.L   D3
+        CLR.L   D4
+        CLR.L   D5
+        CLR.L   D6
+        CLR.L   D7
+        RTS
 DONE:
         CLR.L   D1          ; clear up the data registers used.
         CLR.L   D2
