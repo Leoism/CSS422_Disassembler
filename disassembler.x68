@@ -186,6 +186,9 @@ DECODEASL_REG:
         BRA     PRINTASL_REG
 ******** DECODE ROL REG ********
 DECODEROL_REG:
+        MOVE.L  D2,D3
+        BTST.L  #3,D3
+        BEQ     INVALIDOP   ; we are not supporting ROXL
         JSR     GET_REG_SHIFT_DATA
         BRA     PRINTROL_REG
 ******** DECODE LSR REG ********
@@ -202,6 +205,9 @@ DECODEASR_REG:
         BRA     PRINTASR_REG
 ******** DECODE ROR REG ********
 DECODEROR_REG:
+        MOVE.L  D2,D3
+        BTST.L  #3,D3
+        BEQ     INVALIDOP   ; we are not supporting ROXR
         JSR     GET_REG_SHIFT_DATA
         BRA     PRINTROR_REG
 ******** DECODE MEMORY SHIFTS ********
