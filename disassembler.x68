@@ -159,9 +159,10 @@ DECODENOP:
 ******** DECODE SHIFTS ********
 DECODESHIFTS:
         MOVE.W  D2,D3
-        EORI.W  #$E000,D3
-        CMPI.W  #$1000,D3
-        BGE     INVALIDOP  ; REPLACE WITH OPCODES AS THEY GET DONE
+        ANDI.W  #$E000,D3  ; all shifts start with 1110
+        CMPI.W  #$E000,D3
+        BNE     INVALIDOP  ; REPLACE WITH OPCODES AS THEY GET DONE
+        MOVE.L  D2,D3
         LSR.L   #6,D3      
         ANDI.B  #$3,D3
         CMP.B   #$3,D3
