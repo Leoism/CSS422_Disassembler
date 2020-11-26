@@ -32,6 +32,8 @@ DISASL  DC.B    'ASL',0
 DISASR  DC.B    'ASR',0
 DISROL  DC.B    'ROL',0
 DISROR  DC.B    'ROR',0
+DISLEA  DC.B    'LEA',0
+DISRTS  DC.B    'RTS',0
 ******** SIZE PRINTS ********
 DISB    DC.B    '.B  ',0
 DISW    DC.B    '.W  ',0
@@ -156,6 +158,12 @@ DECODENOP:
         EORI.W  #$4E71,D3   ; NOP XOR NOP would equal 0
         CMP.W   #0,D3
         BEQ     PRINTNOP
+DECODERTS:
+        MOVE.W  D2, D3      ; make a copy in d3 to run tests on the copy
+        EORI.W  #$4E75,D3  ; RTS XOR RTS would eqaul 0
+        CMP.W   #0,D3
+        BEQ     PRINTRTS
+
 ******** DECODE SHIFTS ********
 DECODESHIFTS:
         MOVE.W  D2,D3
@@ -342,6 +350,17 @@ PRINTNOP:
         JSR     CLEAR_ALL
         MOVE.W  (A2)+,D2    ; address should be incremented at the end of each print
         CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+
+PRINTRTS:
+        LEA     DISRTS,A1   ; display RTS string
+        MOVE.B  #14,D0
+        TRAP    #15
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        MOVE.W  (A2)+,D2    ; address should be incremented at the end of each print
+        CMP.L   ENADR,A2    ; keep looping until reach the end address
         BLT     LOOPMEM
         BRA     DONE
 
@@ -646,6 +665,7 @@ DONE:
         CLR.L   D3
         CLR.L   D7
         END    START        ; last line of source
+
 
 *~Font name~Courier New~
 *~Font size~10~
