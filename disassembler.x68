@@ -24,6 +24,10 @@ NEWLINE DC.B    CR,LF,0
 DISCOMMA DC.B   ',',0
 DISPOUND DC.B   '#',0
 DISDOLLAR DC.B  '$',0
+DISPARENL DC.B   '(',0
+DISPARENR DC.B   ')',0
+DISPLUS DC.B    '+',0
+DISMIN  DC.B    '-',0
 ******** INSTRUCTION PRINTS ********
 DISNOP  DC.B    'NOP',0
 DISLSL  DC.B    'LSL',0
@@ -32,6 +36,10 @@ DISASL  DC.B    'ASL',0
 DISASR  DC.B    'ASR',0
 DISROL  DC.B    'ROL',0
 DISROR  DC.B    'ROR',0
+DISADD  DC.B    'ADD',0
+DISADDA DC.B    'ADDA',0
+DISADDQ DC.B    'ADDQ',0
+DISSUB  DC.B    'SUB',0
 ******** SIZE PRINTS ********
 DISB    DC.B    '.B  ',0
 DISW    DC.B    '.W  ',0
@@ -46,7 +54,14 @@ DISD4   DC.B    'D4',0
 DISD5   DC.B    'D5',0
 DISD6   DC.B    'D6',0
 DISD7   DC.B    'D7',0
-
+DISA0   DC.B    'A0',0
+DISA1   DC.B    'A1',0
+DISA2   DC.B    'A2',0
+DISA3   DC.B    'A3',0
+DISA4   DC.B    'A4',0
+DISA5   DC.B    'A5',0
+DISA6   DC.B    'A6',0
+DISA7   DC.B    'A7',0
 ******** INVALID DATA ********
 DISDATA DC.B    ' DATA ',0
         ORG     $1000     ; start at 1000
@@ -161,7 +176,7 @@ DECODESHIFTS:
         MOVE.W  D2,D3
         ANDI.W  #$E000,D3  ; all shifts start with 1110
         CMPI.W  #$E000,D3
-        BNE     INVALIDOP  ; REPLACE WITH OPCODES AS THEY GET DONE
+        BNE     DECODEADDS  ; REPLACE WITH OPCODES AS THEY GET DONE
         MOVE.L  D2,D3
         LSR.L   #6,D3      
         ANDI.B  #$3,D3
@@ -247,6 +262,52 @@ DECODE_ASR_MEM:
 DECODE_ROR_MEM:
         JSR     GET_MEM_SHIFT_DATA
         BRA     PRINTROR_MEM
+******** DECODE ADDITIONS ********
+DECODEADDS:
+        MOVE.W  D2,D3
+        ANDI.W  #$D000,D3
+        CMPI.W  #$D000,D3
+        BNE     DECODE_ADDQ
+        MOVE.W  D2,D3
+        * Check if its ADDA * 
+        LSR.W   #6,D3
+        ANDI.W  #$3,D3
+        CMPI.W  #%011,D3
+        BEQ     DECODE_ADDA
+        CMPI.W  #%111,D3
+        BEQ     DECODE_ADDA
+        * Start ADD decode *
+        * Check if ea or An/Dn *
+        MOVE.W  D2,D3
+        LSR.W   #3,D3
+        ANDI.W  #$7,D3
+        CMPI.W  #%111,D3
+        BEQ     DECODE_ADD_EA
+******** DECODE ADD Dn,Dn ********
+DECODE_ADD_Dn:
+        JSR     GET_ADD_MODE_REG
+        JSR     GET_ADD_OPMODE
+        JSR     GET_ADD_REG
+        BRA     PRINT_ADD_Dn
+******** DECODE ADD ea,Dn/Dn,ea ********
+DECODE_ADD_EA:
+        JSR     GET_ADD_MODE_REG
+        JSR     GET_ADD_OPMODE
+        JSR     GET_ADD_REG
+        JSR     GET_ADD_EA
+        BRA     PRINT_ADD_EA
+DECODE_ADDA:
+
+DECODE_ADDQ:
+        MOVE.W  D2,D3
+        ANDI.W  #$5000,D3
+        CMPI.W  #$5000,D3
+        BNE     DECODE_SUB
+DECODE_SUB:
+        MOVE.W  D2,D3
+        ANDI.W  #$9000,D3
+        CMPI.W  #$9000,D3
+        BNE     INVALIDOP
 ******** INVALID OUTPUT ********
 * THIS SHOULD ALWAYS BE THE LAST DECODE BRANCH
 * THAT WAY AFTER ATTEMPTING ALL ADDRESSING MODE AND FAILING
@@ -276,6 +337,56 @@ INVALIDOP:                 ; when an opcode is invalid, print the address, 'data
         BLT     LOOPMEM
         BRA     DONE
 
+******** ADD FUNCTIONS ********
+* Returns:
+*   D7 - contains the register mode
+*   D4 - contains the register number
+GET_ADD_MODE_REG:
+        MOVE.W  D2,D3
+        LSR.W   #3,D3
+        ANDI.W  #$7,D3     ; Gets the mode
+        MOVE.W  D3,D7
+        MOVE.W  D2,D3
+        ANDI.W  #$7,D3     ; gets the register number
+        MOVE.W  D3,D4
+        MOVE.W  D2,D3
+        RTS
+* Returns:
+*   D6 - contains opmode
+GET_ADD_OPMODE:
+        MOVE.W  D2,D3
+        LSR.W   #6,D3
+        ANDI.W  #$7,D3
+        MOVE.W  D3,D6
+        MOVE.W  D2,D3
+        RTS
+* Returns:
+*   D5 - contains register
+GET_ADD_REG:
+        MOVE.W  D2,D3
+        LSR.W   #5,D3
+        LSR.W   #4,D3
+        ANDI.W  #$7,D3
+        MOVE.W  D3,D5
+        RTS
+* Returns:
+*   D7 - contains ea 
+GET_ADD_EA:
+        CMP.B   #0,D4
+        BEQ     ADD_WORD_ADDR
+        CMP.B   #1,D4
+        BEQ     ADD_LONG_ADDR
+        RTS
+ADD_WORD_ADDR:
+        * Increment PC Counter
+        CMP.W   #0,(A2)+   ; instructions are word size
+        MOVE.W  (A2)+,D7    ; D6 will contain the address
+        RTS
+ADD_LONG_ADDR:
+        * Increment PC Counter
+        CMP.W   #0,(A2)+   ; instructions are word size
+        MOVE.L  (A2)+,D7    ; D6 will contain the address
+        RTS
 ******** COMMON SHIFT FUNCTIONS ********
 * Returns:
 *   D7 - Register
@@ -523,6 +634,115 @@ PRINTROR_MEM:
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
         BRA     DONE
+******** ADDITION INSTRUCTIONS ********
+******** PRINT ADD Dn,Dn
+PRINT_ADD_Dn:
+*   D7 - register mode, D4 - register number
+*   D6 - opmode, D5 - register
+        LEA     DISADD,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        JSR     PRINT_ADD_OPMODE
+        JSR     PRINTDn
+        JSR     PRINTCOMMA
+        MOVE.W  D5,D4
+        JSR     PRINTDn
+        JSR     PRINTNEWLINE
+
+        MOVE.W  (A2)+,D2
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+PRINT_ADD_EA:
+*   D7 - EA, D4 - register number
+*   D6 - opmode, D5 - register
+        LEA     DISADD,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        JSR     PRINT_ADD_OPMODE
+        JSR     PRINT_EA_DN_OR_DN_EA
+
+        MOVE.W  (A2),D2
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+******** ADD FUNCTIONS ********
+PRINT_ADD_OPMODE:
+        JSR     ADD_EA_DN
+        JSR     ADD_DN_EA
+        RTS
+PRINT_EA_DN_OR_DN_EA:
+        CMPI.W  #8,D6
+        BEQ     PRINT_EA_DN
+        BRA     PRINT_DN_EA
+        RTS
+****************
+* Returns
+*   Prints ADD instruction from ea,Dn
+PRINT_EA_DN:
+        JSR     PRINTDOLLAR
+        MOVE.L  D7,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTCOMMA
+        MOVE.W  D5,D4
+        JSR     PRINTDn
+        JSR     PRINTNEWLINE
+        RTS
+****************
+* Returns
+*   Prints ADD instruction from Dn,ea
+PRINT_DN_EA:
+        MOVE.W  D5,D4
+        JSR     PRINTDn
+        JSR     PRINTCOMMA
+        JSR     PRINTDOLLAR
+
+        MOVE.L  D7,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTNEWLINE
+        RTS
+******************
+* Returns
+*   D6 - contains %1000 if ADD mode is ea,Dn
+ADD_EA_DN:
+        CMPI.B  #0,D6
+        JSR     IS_EA_TO_DN
+        BEQ     PRINTB
+        CMPI.B  #8,D6      ; MOVE alters Z tag, must get it back.
+        BEQ     PRINTB
+
+        CMPI.W  #%001,D6
+        JSR     IS_EA_TO_DN
+        BEQ     PRINTW
+        CMPI.B  #8,D6   ; MOVE alters Z tag, must get it back.
+        BEQ     PRINTW
+
+        CMPI.W  #%010,D6
+        JSR     IS_EA_TO_DN
+        BEQ     PRINTL
+        CMPI.B  #8,D6   ; MOVE alters Z tag, must get it back.
+        BEQ     PRINTL
+        RTS
+ADD_DN_EA:
+        CMPI.W  #%100,D6
+        BEQ     PRINTB
+        CMPI.W  #%101,D6
+        BEQ     PRINTW
+        CMPI.W  #%110,D6
+        BEQ     PRINTL
+        RTS
+IS_EA_TO_DN:
+        BEQ     TRUE_EA_TO_DN
+        RTS
+TRUE_EA_TO_DN:
+        MOVE.L  #8,D6
+        RTS
 ****************************************
 ******** PRINT INSTRUCTION SIZE ********
 ****************************************
@@ -549,9 +769,9 @@ PRINTL:
         MOVE.B  #14,D0
         TRAP    #15
         RTS
-**************************************
-******** PRINT DATA REGISTERS ********
-**************************************
+**********************************************
+******** PRINT ADDRESS/DATA REGISTERS ********
+**********************************************
 * D4 should contain data register
 PRINTDn:
         CMP.B #$7,D4
@@ -607,6 +827,64 @@ PRINTD6:
         RTS
 PRINTD7:
         LEA     DISD7,A1
+        MOVE.B  #14, D0
+        TRAP    #15
+        RTS
+* D4 should contain data register
+PRINTAn:
+        CMP.B #$7,D4
+        BEQ PRINTA7
+        CMP.B #$6,D4
+        BEQ PRINTA6
+        CMP.B #$5,D4
+        BEQ PRINTA5
+        CMP.B #$4,D4
+        BEQ PRINTA4
+        CMP.B #$3,D4
+        BEQ PRINTA3
+        CMP.B #$2,D4
+        BEQ PRINTA2
+        CMP.B #$1,D4
+        BEQ PRINTA1
+        CMP.B #$0,D4
+        BEQ PRINTA0
+PRINTA0:
+        LEA     DISA0,A1
+        MOVE.B  #14, D0
+        TRAP    #15
+        RTS
+PRINTA1:
+        LEA     DISA1,A1
+        MOVE.B  #14, D0
+        TRAP    #15
+        RTS
+PRINTA2:
+        LEA     DISA2,A1
+        MOVE.B  #14, D0
+        TRAP    #15
+        RTS
+PRINTA3:
+        LEA     DISA3,A1
+        MOVE.B  #14, D0
+        TRAP    #15
+        RTS
+PRINTA4:
+        LEA     DISA4,A1
+        MOVE.B  #14, D0
+        TRAP    #15
+        RTS
+PRINTA5:
+        LEA     DISA5,A1
+        MOVE.B  #14, D0
+        TRAP    #15
+        RTS
+PRINTA6:
+        LEA     DISA6,A1
+        MOVE.B  #14, D0
+        TRAP    #15
+        RTS
+PRINTA7:
+        LEA     DISA7,A1
         MOVE.B  #14, D0
         TRAP    #15
         RTS
