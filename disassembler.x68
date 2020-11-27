@@ -304,7 +304,11 @@ DECODE_ADDA_AnDn:
         JSR     GET_ADD_MODE_REG
         JSR     GET_ADD_OPMODE
         JSR     GET_ADD_REG
-        JSR     PRINT_ADDA_DnAn
+        * Check if we're dealing with indirects * 
+        CMPI.B  #1,D7
+        BGT     PRINT_ADDA_INDIRECT
+
+        BRA     PRINT_ADDA_DnAn
 DECODE_ADDA_EA:
 
 DECODE_ADDQ:
@@ -696,6 +700,24 @@ PRINT_ADDA_DnAn:
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
         BRA     DONE
+******** PRINT ADDA (An),An & (An)+,An & -(An),An ********
+PRINT_ADDA_INDIRECT:
+        LEA     DISADDA,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        JSR     PRINT_ADDA_OPMODE
+        JSR     PRINT_ADDA_INDIRECT_TYPE
+        JSR     PRINTCOMMA
+
+        MOVE.W  D5,D4
+        JSR     PRINTAn
+        JSR     PRINTNEWLINE
+
+        MOVE.W  (A2)+,D2
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
 ******** ADDA FUNCTIONS ********
 PRINT_ADDA_Dn_OR_An:
         CMPI.B  #0,D7
@@ -708,6 +730,14 @@ PRINT_ADDA_OPMODE:
         BEQ     PRINTW
         CMPI.B  #%111,D6
         BEQ     PRINTL
+        RTS
+PRINT_ADDA_INDIRECT_TYPE:
+        CMPI.B  #%010,D7
+        BEQ     PRINT_An_IN
+        CMPI.B  #%011,D7
+        BEQ     PRINT_An_POST
+        CMPI.B  #%100,D7
+        BEQ     PRINT_An_PRE
         RTS
 ******** ADD FUNCTIONS ********
 PRINT_ADD_OPMODE:
@@ -929,9 +959,42 @@ PRINTA7:
         MOVE.B  #14, D0
         TRAP    #15
         RTS
+PRINT_An_IN:
+        JSR     PRINTLEFTPAREN
+        JSR     PRINTAn
+        JSR     PRINTRIGHTPAREN
+        RTS
+PRINT_An_POST:
+        JSR     PRINT_An_IN
+        JSR     PRINTPLUS
+        RTS
+PRINT_An_PRE:
+        JSR     PRINTMINUS
+        JSR     PRINT_An_IN
+        RTS
 ****************************************
 ******** PRINT COMMON CHARCTERS ********
 ****************************************
+PRINTLEFTPAREN:
+        LEA     DISPARENL,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        RTS
+PRINTRIGHTPAREN:
+        LEA     DISPARENR,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        RTS
+PRINTPLUS:
+        LEA     DISPLUS,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        RTS
+PRINTMINUS:
+        LEA     DISMIN,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        RTS
 PRINTCOMMA:
         LEA     DISCOMMA,A1
         MOVE.B  #14,D0
