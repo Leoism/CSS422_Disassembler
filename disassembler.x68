@@ -25,6 +25,7 @@ DISCOMMA DC.B   ',',0
 DISPOUND DC.B   '#',0
 DISDOLLAR DC.B  '$',0
 ******** INSTRUCTION PRINTS ********
+DISNOT  DC.B    'NOT',0
 DISNOP  DC.B    'NOP',0
 DISLSL  DC.B    'LSL',0
 DISLSR  DC.B    'LSR',0
@@ -163,7 +164,38 @@ DECODERTS:
         EORI.W  #$4E75,D3  ; RTS XOR RTS would eqaul 0
         CMP.W   #0,D3
         BEQ     PRINTRTS
+******** DECODE LOGICS ********
+DECODELOGICS:
+        MOVE.W  D2,D3
+        LSR.W   #7,D3       ; NOT, LEA, JSR starts with 0100, RTS starts with 0100 too, but it has a seperate check
+        LSR.W   #5,D3
+        CMPI.B  #4,D3
+        BEQ     DECODELOGIC_CODE
+        BRA     DECODESHIFTS
+        
+******** DECODE LOGICS SEQUENCE ********
+DECODELOGIC_CODE:
+        MOVE.W  D2,D3
+        ANDI.W  #$4600,D3
+        CMPI.W  #$4600,D3
+        BEQ     DECODENOT_REG   ; if the opcode starts with 0100 0110, then it is NOT opcode
+        
+        *MOVE.W  D2,D3
+        *ANDI.W  #$4E00,D3
+        *CMPI.W  #$4E00,D3
+        *BEQ     DECODEJSR_REG   ; if the opcode starts with 0100 1110, then it is JSR opcode
+        
+        *MOVE.L  D2,D3
+        *BTST.L  #8,D3
+        *BNE     DECODELEA_MEM   ; if the opcode starts with 0100 and the 8th binary is 1, then it is a LEA opcode
+        
+DECODENOT_REG:
+        JSR     GET_NOT_REG_LOGIC_DATA
+        BRA     PRINTNOT_REG
 
+DECODEJSR_REG:
+
+DECODELEA_MEM:
 ******** DECODE SHIFTS ********
 DECODESHIFTS:
         MOVE.W  D2,D3
@@ -284,6 +316,21 @@ INVALIDOP:                 ; when an opcode is invalid, print the address, 'data
         BLT     LOOPMEM
         BRA     DONE
 
+******** NOT LOGIC FUNCTIONS ***********
+* Returns:
+*   D7 - EA Register
+*   D6 - EA Mode
+*   D5 - Contains size
+GET_NOT_REG_LOGIC_DATA:
+        MOVE.L  D2,D3
+        MOVE.B  D3,D7      ; D7 will contain the EA register
+        MOVE.B  #$00,D6    ; D6 will contain 000 because its for data register
+        MOVE.L  D2,D3
+        LSR.W   #6,D3
+        ANDI.B  #$7,D3
+        MOVE.B  D3,D5      ; D5 will contain the size, 0 for B, 1 for word, 2 for long      
+        RTS
+
 ******** COMMON SHIFT FUNCTIONS ********
 * Returns:
 *   D7 - Register
@@ -362,7 +409,7 @@ PRINTRTS:
         MOVE.W  (A2)+,D2    ; address should be incremented at the end of each print
         CMP.L   ENADR,A2    ; keep looping until reach the end address
         BLT     LOOPMEM
-        BRA     DONE
+        BRA     DONE            
 
 ******** PRINT SHIFT INSTRUCTIONS ********
 ******** COMMON SHIFT FUNCS ********
@@ -403,6 +450,23 @@ PRINT_MEM_SHIFT_INFO:
         JSR     PRINTNEWLINE
         JSR     CLEAR_ALL
         RTS
+************************************        
+******** PRINT LOGIC INSTRUCTIONS ********
+************************************
+PRINTNOT_REG:
+        LEA     DISNOT,A1   ; display NOT string
+        MOVE.B  #14,D0
+        TRAP    #15
+        JSR     PRINTSIZEOP
+        MOVE.B  D7,D4
+        JSR     PRINTDn
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        MOVE.W  (A2)+,D2
+        CMP.L   ENADR,A2
+        BLT     LOOPMEM
+        BRA     DONE
+        
 ******** PRINT REGISTER SHIFTS ********
 ******** PRINT LOGIC REGISTER SHIFTS ********
 PRINTLSL_REG:
