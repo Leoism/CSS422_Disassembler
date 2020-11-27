@@ -273,9 +273,9 @@ DECODEADDS:
         LSR.W   #6,D3
         ANDI.W  #$3,D3
         CMPI.W  #%011,D3
-        BEQ     DECODE_ADDA
+        BEQ     DECODE_ADDA_AnDn
         CMPI.W  #%111,D3
-        BEQ     DECODE_ADDA
+        BEQ     DECODE_ADDA_AnDn
         * Start ADD decode *
         * Check if ea or An/Dn *
         MOVE.W  D2,D3
@@ -296,7 +296,16 @@ DECODE_ADD_EA:
         JSR     GET_ADD_REG
         JSR     GET_ADD_EA
         BRA     PRINT_ADD_EA
-DECODE_ADDA:
+*****************************
+******** DECODE ADDA ********
+*****************************
+******** DECODE ADDA.x Dn,An & An,An ********
+DECODE_ADDA_AnDn:
+        JSR     GET_ADD_MODE_REG
+        JSR     GET_ADD_OPMODE
+        JSR     GET_ADD_REG
+        JSR     PRINT_ADDA_DnAn
+DECODE_ADDA_EA:
 
 DECODE_ADDQ:
         MOVE.W  D2,D3
@@ -635,7 +644,7 @@ PRINTROR_MEM:
         BLT     LOOPMEM
         BRA     DONE
 ******** ADDITION INSTRUCTIONS ********
-******** PRINT ADD Dn,Dn
+******** PRINT ADD Dn,Dn ********
 PRINT_ADD_Dn:
 *   D7 - register mode, D4 - register number
 *   D6 - opmode, D5 - register
@@ -668,6 +677,38 @@ PRINT_ADD_EA:
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
         BRA     DONE
+******** PRINT ADDA Dn,An & An,An ********
+PRINT_ADDA_DnAn:
+*   D7 - ea mode, D4 - ea number
+*   D6 - opmode, D5 - register
+        LEA     DISADDA,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        JSR     PRINT_ADDA_OPMODE
+        JSR     PRINT_ADDA_Dn_OR_An
+        JSR     PRINTCOMMA
+        MOVE.W  D5,D4
+        JSR     PRINTAn
+        JSR     PRINTNEWLINE
+
+        MOVE.W  (A2)+,D2
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+******** ADDA FUNCTIONS ********
+PRINT_ADDA_Dn_OR_An:
+        CMPI.B  #0,D7
+        BEQ     PRINTDn
+        CMPI.B  #1,D7 
+        BEQ     PRINTAn
+        RTS
+PRINT_ADDA_OPMODE:
+        CMPI.B  #%011,D6
+        BEQ     PRINTW
+        CMPI.B  #%111,D6
+        BEQ     PRINTL
+        RTS
 ******** ADD FUNCTIONS ********
 PRINT_ADD_OPMODE:
         JSR     ADD_EA_DN
