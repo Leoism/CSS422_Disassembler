@@ -323,9 +323,17 @@ DECODE_ADDQ_AnDn:
         JSR     GET_ADD_MODE_REG
         JSR     GET_ADDQ_SIZE
         JSR     GET_ADDQ_DATA
-        BRA     PRINT_ADDQ_AnDn
+        * CHeck if dealing with ea * 
+        CMPI.B  #%111,D7
+        BEQ     DECODE_ADDQ_EA
+        CMPI.B  #%1,D7
+        * Check if dealing with An/Dn *
+        BLE     PRINT_ADDQ_AnDn
+        BRA     PRINT_ADDQ_INDIRECT
 DECODE_ADDQ_INDIRECT:
 DECODE_ADDQ_EA:
+        JSR     GET_ADD_EA
+        BRA     PRINT_ADDQ_EA
 DECODE_SUB:
         MOVE.W  D2,D3
         ANDI.W  #$9000,D3
@@ -691,6 +699,7 @@ PRINT_ADD_Dn:
         MOVE.W  D5,D4
         JSR     PRINTDn
         JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
 
         MOVE.W  (A2)+,D2
         CMP.L   ENADR,A2   ; keep looping until reach the end
@@ -705,6 +714,7 @@ PRINT_ADD_EA:
 
         JSR     PRINT_ADD_OPMODE
         JSR     PRINT_EA_DN_OR_DN_EA
+        JSR     CLEAR_ALL
 
         MOVE.W  (A2),D2
         CMP.L   ENADR,A2   ; keep looping until reach the end
@@ -724,6 +734,7 @@ PRINT_ADDA_DnAn:
         MOVE.W  D5,D4
         JSR     PRINTAn
         JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
 
         MOVE.W  (A2)+,D2
         CMP.L   ENADR,A2   ; keep looping until reach the end
@@ -742,6 +753,7 @@ PRINT_ADDA_INDIRECT:
         MOVE.W  D5,D4
         JSR     PRINTAn
         JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
 
         MOVE.W  (A2)+,D2
         CMP.L   ENADR,A2   ; keep looping until reach the end
@@ -762,6 +774,7 @@ PRINT_ADDA_EA:
         MOVE.W  D5,D4
         JSR     PRINTAn
         JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
 
         MOVE.W  (A2),D2
         CMP.L   ENADR,A2   ; keep looping until reach the end
@@ -780,6 +793,39 @@ PRINT_ADDQ_AnDn:
         JSR     PRINTCOMMA
         JSR     PRINT_ADDA_Dn_OR_An
         JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+
+        MOVE.W  (A2)+,D2
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+PRINT_ADDQ_EA:
+        LEA     DISADDQ,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        JSR     PRINTSIZEOP
+        JSR     PRINT_ADDQ_DATA
+        JSR     PRINTCOMMA
+        JSR     PRINT_ADDA_EADDR
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+
+        MOVE.W  (A2),D2
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE 
+PRINT_ADDQ_INDIRECT:
+        LEA     DISADDQ,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        JSR     PRINTSIZEOP
+        JSR     PRINT_ADDQ_DATA
+        JSR     PRINTCOMMA
+        JSR     PRINT_ADDA_INDIRECT_TYPE
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
 
         MOVE.W  (A2)+,D2
         CMP.L   ENADR,A2   ; keep looping until reach the end
