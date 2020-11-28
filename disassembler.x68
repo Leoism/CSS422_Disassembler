@@ -304,13 +304,16 @@ DECODE_ADDA_AnDn:
         JSR     GET_ADD_MODE_REG
         JSR     GET_ADD_OPMODE
         JSR     GET_ADD_REG
-        * Check if we're dealing with indirects * 
+        * Check if we're dealing with Dn,An;An,An * 
         CMPI.B  #1,D7
-        BGT     PRINT_ADDA_INDIRECT
-
-        BRA     PRINT_ADDA_DnAn
+        BLE     PRINT_ADDA_DnAn
+        * CHeck if we're dealing with effective addressing *
+        CMPI.B  #%111,D7
+        BEQ     DECODE_ADDA_EA
+        BRA     PRINT_ADDA_INDIRECT
 DECODE_ADDA_EA:
-
+        JSR     GET_ADD_EA
+        BRA     PRINT_ADDA_EA
 DECODE_ADDQ:
         MOVE.W  D2,D3
         ANDI.W  #$5000,D3
@@ -718,6 +721,26 @@ PRINT_ADDA_INDIRECT:
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
         BRA     DONE
+******** PRINT ADDA ea,An ********
+PRINT_ADDA_EA:
+*   D7 - EA, D4 - register number
+*   D6 - opmode, D5 - register
+        LEA     DISADDA,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        JSR     PRINT_ADDA_OPMODE
+        JSR     PRINT_ADDA_EADDR
+        JSR     PRINTCOMMA
+
+        MOVE.W  D5,D4
+        JSR     PRINTAn
+        JSR     PRINTNEWLINE
+
+        MOVE.W  (A2),D2
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE  
 ******** ADDA FUNCTIONS ********
 PRINT_ADDA_Dn_OR_An:
         CMPI.B  #0,D7
@@ -738,6 +761,13 @@ PRINT_ADDA_INDIRECT_TYPE:
         BEQ     PRINT_An_POST
         CMPI.B  #%100,D7
         BEQ     PRINT_An_PRE
+        RTS
+PRINT_ADDA_EADDR:
+        JSR     PRINTDOLLAR
+        MOVE.L  D7,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
         RTS
 ******** ADD FUNCTIONS ********
 PRINT_ADD_OPMODE:
