@@ -174,8 +174,9 @@ DECODENOP:
 ******** DECODE SHIFTS ********
 DECODESHIFTS:
         MOVE.W  D2,D3
-        ANDI.W  #$E000,D3  ; all shifts start with 1110
-        CMPI.W  #$E000,D3
+        LSR.W   #7,D3
+        LSR.W   #5,D3
+        CMPI.B  #$E,D3
         BNE     DECODEADDS  ; REPLACE WITH OPCODES AS THEY GET DONE
         MOVE.L  D2,D3
         LSR.L   #6,D3      
@@ -265,8 +266,9 @@ DECODE_ROR_MEM:
 ******** DECODE ADDITIONS ********
 DECODEADDS:
         MOVE.W  D2,D3
-        ANDI.W  #$D000,D3
-        CMPI.W  #$D000,D3
+        LSR.W   #7,D3
+        LSR.W   #5,D3
+        CMPI.B  #$D,D3
         BNE     DECODE_ADDQ
         MOVE.W  D2,D3
         * Check if its ADDA * 
@@ -316,17 +318,25 @@ DECODE_ADDA_EA:
         BRA     PRINT_ADDA_EA
 DECODE_ADDQ:
         MOVE.W  D2,D3
-        ANDI.W  #$5000,D3
-        CMPI.W  #$5000,D3
+        LSR.W   #7,D3
+        LSR.W   #5,D3
+        CMPI.B  #5,D3
         BNE     DECODE_SUB
+        MOVE.W  D2,D3
 DECODE_ADDQ_AnDn:
+        BTST.L  #8,D3
+        BNE     INVALIDOP  ; bit #8 should be 0
         JSR     GET_ADD_MODE_REG
         JSR     GET_ADDQ_SIZE
         JSR     GET_ADDQ_DATA
+
         * CHeck if dealing with ea * 
         CMPI.B  #%111,D7
         BEQ     DECODE_ADDQ_EA
         CMPI.B  #%1,D7
+        * Check if invalid size *
+        CMPI.B  #%11,D5
+        BEQ     INVALIDOP
         * Check if dealing with An/Dn *
         BLE     PRINT_ADDQ_AnDn
         BRA     PRINT_ADDQ_INDIRECT
@@ -335,14 +345,22 @@ DECODE_ADDQ_EA:
         BRA     PRINT_ADDQ_EA
 DECODE_SUB:
         MOVE.W  D2,D3
-        ANDI.W  #$9000,D3
-        CMPI.W  #$9000,D3
+        LSR.W   #7,D3
+        LSR.W   #5,D3
+        CMPI.B  #9,D3
         BNE     INVALIDOP
+        MOVE.W  D2,D3
 ******** DECODE SUB Dn,Dn ********
 DECODE_SUB_Dn:
         JSR     GET_ADD_MODE_REG
         JSR     GET_ADD_OPMODE
         JSR     GET_ADD_REG
+        * check if opmode is 111 or 011 (not supporting addressing for SUB *
+        CMPI.W  #%111,D6
+        BEQ     INVALIDOP
+        CMPI.W  #%011,D6
+        BEQ     INVALIDOP
+        * check if dealing with ea *
         CMPI.W  #%111,D7
         BEQ     DECODE_SUB_EA
         BRA     PRINT_SUB_Dn
@@ -406,6 +424,10 @@ GET_ADD_MODE_REG:
         MOVE.W  D2,D3
         LSR.W   #3,D3
         ANDI.W  #$7,D3     ; Gets the mode
+        CMPI.W  #%101,D3
+        BEQ     INVALIDOP
+        CMPI.W  #%110,D3   ; we are not supporting this addressing modes
+        BEQ     INVALIDOP 
         MOVE.W  D3,D7
         MOVE.W  D2,D3
         ANDI.W  #$7,D3     ; gets the register number
@@ -437,7 +459,7 @@ GET_ADD_EA:
         BEQ     ADD_WORD_ADDR
         CMP.B   #1,D4
         BEQ     ADD_LONG_ADDR
-        RTS
+        BRA     INVALIDOP
 ADD_WORD_ADDR:
         * Increment PC Counter
         CMP.W   #0,(A2)+   ; instructions are word size
@@ -466,6 +488,8 @@ GET_REG_SHIFT_DATA:
         LSR.W   #6,D3
         ANDI.W  #$3,D3
         MOVE.B  D3,D5      ; D5 will contain size operation
+        CMPI.B  #%11,D5
+        BEQ     INVALIDOP
         MOVE.L  D2,D3
         LSR.W   #5,D3
         LSR.W   #4,D3
@@ -492,7 +516,7 @@ DETERMINE_ADDR_MODE:
         BEQ     WORD_ADDR
         CMP.B   #1,D7
         BEQ     LONG_ADDR
-        RTS
+        BRA     INVALIDOP
 WORD_ADDR:
         * Increment PC Counter
         CMP.W   #0,(A2)+   ; instructions are word size
