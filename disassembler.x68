@@ -705,6 +705,10 @@ PRINT_ADD_Dn:
         TRAP    #15
 
         JSR     PRINT_ADD_OPMODE
+        * Check if its Dn, ea *
+        CMPI.B  #8,D6 
+        BNE     PRINT_ADD_Dn_Ea
+
         JSR     PRINT_ADDA_Dn_OR_An
         JSR     PRINTCOMMA
         MOVE.W  D5,D4
@@ -716,6 +720,20 @@ PRINT_ADD_Dn:
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
         BRA     DONE
+PRINT_ADD_Dn_Ea:
+        MOVE.W  D4,D1
+        MOVE.W  D5,D4
+        JSR     PRINTDn
+        JSR     PRINTCOMMA
+        MOVE.W  D1,D4
+        JSR     PRINT_ADDA_Dn_OR_An
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+
+        MOVE.W  (A2)+,D2
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE  
 PRINT_ADD_EA:
 *   D7 - EA, D4 - register number
 *   D6 - opmode, D5 - register
@@ -850,6 +868,10 @@ PRINT_SUB_Dn:
         TRAP    #15
 
         JSR     PRINT_ADD_OPMODE
+        * Check if its Dn, ea *
+        CMPI.B  #8,D6 
+        BNE     PRINT_ADD_Dn_Ea
+
         JSR     PRINT_ADDA_Dn_OR_An
         JSR     PRINTCOMMA
         MOVE.W  D5,D4
@@ -890,7 +912,7 @@ PRINT_ADDA_Dn_OR_An:
         BEQ     PRINTDn
         CMPI.B  #1,D7 
         BEQ     PRINTAn
-        RTS
+        BRA     PRINT_ADDA_INDIRECT_TYPE
 PRINT_ADDA_OPMODE:
         CMPI.B  #%011,D6
         BEQ     PRINTW
