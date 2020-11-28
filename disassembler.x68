@@ -330,7 +330,6 @@ DECODE_ADDQ_AnDn:
         * Check if dealing with An/Dn *
         BLE     PRINT_ADDQ_AnDn
         BRA     PRINT_ADDQ_INDIRECT
-DECODE_ADDQ_INDIRECT:
 DECODE_ADDQ_EA:
         JSR     GET_ADD_EA
         BRA     PRINT_ADDQ_EA
@@ -339,6 +338,18 @@ DECODE_SUB:
         ANDI.W  #$9000,D3
         CMPI.W  #$9000,D3
         BNE     INVALIDOP
+******** DECODE SUB Dn,Dn ********
+DECODE_SUB_Dn:
+        JSR     GET_ADD_MODE_REG
+        JSR     GET_ADD_OPMODE
+        JSR     GET_ADD_REG
+        CMPI.W  #%111,D7
+        BEQ     DECODE_SUB_EA
+        BRA     PRINT_SUB_Dn
+******** DECODE ADD ea,Dn/Dn,ea ********
+DECODE_SUB_EA:
+        JSR     GET_ADD_EA
+        BRA     PRINT_SUB_EA
 ******** INVALID OUTPUT ********
 * THIS SHOULD ALWAYS BE THE LAST DECODE BRANCH
 * THAT WAY AFTER ATTEMPTING ALL ADDRESSING MODE AND FAILING
@@ -694,7 +705,7 @@ PRINT_ADD_Dn:
         TRAP    #15
 
         JSR     PRINT_ADD_OPMODE
-        JSR     PRINTDn
+        JSR     PRINT_ADDA_Dn_OR_An
         JSR     PRINTCOMMA
         MOVE.W  D5,D4
         JSR     PRINTDn
@@ -828,6 +839,40 @@ PRINT_ADDQ_INDIRECT:
         JSR     CLEAR_ALL
 
         MOVE.W  (A2)+,D2
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+PRINT_SUB_Dn:
+*   D7 - register mode, D4 - register number
+*   D6 - opmode, D5 - register
+        LEA     DISSUB,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        JSR     PRINT_ADD_OPMODE
+        JSR     PRINT_ADDA_Dn_OR_An
+        JSR     PRINTCOMMA
+        MOVE.W  D5,D4
+        JSR     PRINTDn
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+
+        MOVE.W  (A2)+,D2
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+PRINT_SUB_EA:
+*   D7 - EA, D4 - register number
+*   D6 - opmode, D5 - register
+        LEA     DISSUB,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        JSR     PRINT_ADD_OPMODE
+        JSR     PRINT_EA_DN_OR_DN_EA
+        JSR     CLEAR_ALL
+
+        MOVE.W  (A2),D2
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
         BRA     DONE
