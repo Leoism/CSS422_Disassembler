@@ -319,6 +319,13 @@ DECODE_ADDQ:
         ANDI.W  #$5000,D3
         CMPI.W  #$5000,D3
         BNE     DECODE_SUB
+DECODE_ADDQ_AnDn:
+        JSR     GET_ADD_MODE_REG
+        JSR     GET_ADDQ_SIZE
+        JSR     GET_ADDQ_DATA
+        BRA     PRINT_ADDQ_AnDn
+DECODE_ADDQ_INDIRECT:
+DECODE_ADDQ_EA:
 DECODE_SUB:
         MOVE.W  D2,D3
         ANDI.W  #$9000,D3
@@ -352,7 +359,26 @@ INVALIDOP:                 ; when an opcode is invalid, print the address, 'data
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
         BRA     DONE
-
+******** ADDQ FUNCTIONS ********
+* Returns:
+*   D5 - contains size operation
+GET_ADDQ_SIZE:
+        MOVE.W  D2,D3
+        LSR.W   #6,D3
+        ANDI.W  #%11,D3    ; gets the size operation
+        MOVE.B  D3,D5
+        MOVE.W  D2,D3
+        RTS
+* Returns:
+*   D6 - contains data
+GET_ADDQ_DATA:
+        MOVE.W  D2,D3
+        LSR.W   #6,D3
+        LSR.W   #3,D3
+        ANDI.W  #%111,D3   ; gets the data 
+        MOVE.B  D3,D6
+        MOVE.W  D2,D3
+        RTS
 ******** ADD FUNCTIONS ********
 * Returns:
 *   D7 - contains the register mode
@@ -740,7 +766,33 @@ PRINT_ADDA_EA:
         MOVE.W  (A2),D2
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
-        BRA     DONE  
+        BRA     DONE 
+******** PRINT ADDQ #data,Dn/An ********
+PRINT_ADDQ_AnDn:
+* D7 - mode, D6 - data
+* D5 - size, D4 - register
+        LEA     DISADDQ,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        JSR     PRINTSIZEOP
+        JSR     PRINT_ADDQ_DATA
+        JSR     PRINTCOMMA
+        JSR     PRINT_ADDA_Dn_OR_An
+        JSR     PRINTNEWLINE
+
+        MOVE.W  (A2)+,D2
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+******** ADDQ FUNCTIONS ********
+PRINT_ADDQ_DATA:
+        JSR     PRINTPOUND
+        MOVE.B  D6,D1
+        MOVE.B  #10,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        RTS    
 ******** ADDA FUNCTIONS ********
 PRINT_ADDA_Dn_OR_An:
         CMPI.B  #0,D7
@@ -1005,6 +1057,11 @@ PRINT_An_PRE:
 ****************************************
 ******** PRINT COMMON CHARCTERS ********
 ****************************************
+PRINTPOUND:
+        LEA     DISPOUND,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        RTS
 PRINTLEFTPAREN:
         LEA     DISPARENL,A1
         MOVE.B  #14,D0
