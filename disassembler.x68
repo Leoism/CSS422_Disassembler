@@ -25,16 +25,16 @@ DISCOMMA DC.B   ',',0
 DISPOUND DC.B   '#',0
 DISDOLLAR DC.B  '$',0
 ******** INSTRUCTION PRINTS ********
-DISNOT  DC.B    'NOT',0
 DISNOP  DC.B    'NOP',0
+DISRTS  DC.B    'RTS',0
+DISNOT  DC.B    'NOT',0
+DISJSR  DC.B    'JSR  ',0
 DISLSL  DC.B    'LSL',0
 DISLSR  DC.B    'LSR',0
 DISASL  DC.B    'ASL',0
 DISASR  DC.B    'ASR',0
 DISROL  DC.B    'ROL',0
 DISROR  DC.B    'ROR',0
-DISLEA  DC.B    'LEA',0
-DISRTS  DC.B    'RTS',0
 ******** SIZE PRINTS ********
 DISB    DC.B    '.B  ',0
 DISW    DC.B    '.W  ',0
@@ -49,6 +49,16 @@ DISD4   DC.B    'D4',0
 DISD5   DC.B    'D5',0
 DISD6   DC.B    'D6',0
 DISD7   DC.B    'D7',0
+
+******** INDIRECT ADDRESS REGISTER PRINTS ********
+DIS_INA0    DC.B    '(A0)',0
+DIS_INA1    DC.B    '(A1)',0
+DIS_INA2    DC.B    '(A2)',0
+DIS_INA3    DC.B    '(A3)',0  
+DIS_INA4    DC.B    '(A4)',0
+DIS_INA5    DC.B    '(A5)',0
+DIS_INA6    DC.B    '(A6)',0
+DIS_INA7    DC.B    '(A7)',0
 
 ******** INVALID DATA ********
 DISDATA DC.B    ' DATA ',0
@@ -176,14 +186,16 @@ DECODELOGICS:
 ******** DECODE LOGICS SEQUENCE ********
 DECODELOGIC_CODE:
         MOVE.W  D2,D3
-        ANDI.W  #$4600,D3
-        CMPI.W  #$4600,D3
+        LSR.W   #8,D3
+        *ANDI.W  #$4600,D3
+        CMP.B   #$46,D3
         BEQ     DECODENOT_REG   ; if the opcode starts with 0100 0110, then it is NOT opcode
         
-        *MOVE.W  D2,D3
+        MOVE.W  D2,D3
+        LSR.W   #8,D3
         *ANDI.W  #$4E00,D3
-        *CMPI.W  #$4E00,D3
-        *BEQ     DECODEJSR_REG   ; if the opcode starts with 0100 1110, then it is JSR opcode
+        CMP.B   #$4E,D3
+        BEQ     DECODEJSR_REG   ; if the opcode starts with 0100 1110, then it is JSR opcode
         
         *MOVE.L  D2,D3
         *BTST.L  #8,D3
@@ -194,6 +206,8 @@ DECODENOT_REG:
         BRA     PRINTNOT_REG
 
 DECODEJSR_REG:
+        JSR     GET_JSR_REG_LOGIC_DATA
+        BRA     PRINTJSR_ADR
 
 DECODELEA_MEM:
 ******** DECODE SHIFTS ********
@@ -323,6 +337,7 @@ INVALIDOP:                 ; when an opcode is invalid, print the address, 'data
 *   D5 - Contains size
 GET_NOT_REG_LOGIC_DATA:
         MOVE.L  D2,D3
+        ANDI.B  #$7,D3
         MOVE.B  D3,D7      ; D7 will contain the EA register
         MOVE.B  #$00,D6    ; D6 will contain 000 because its for data register
         MOVE.L  D2,D3
@@ -330,6 +345,22 @@ GET_NOT_REG_LOGIC_DATA:
         ANDI.B  #$7,D3
         MOVE.B  D3,D5      ; D5 will contain the size, 0 for B, 1 for word, 2 for long      
         RTS
+ 
+******** JSR LOGIC FUNCTIONS ***********
+* Returns:
+*   D7 - EA Register
+*   D6 - EA Mode     
+GET_JSR_REG_LOGIC_DATA:
+        MOVE.L  D2,D3
+        ANDI.B  #$7,D3
+        MOVE.B  D3,D7      ; D7 will contain the EA register
+        MOVE.L  D2,D3
+        LSR.W   #6,D3
+        ANDI.B  #$7,D3
+        MOVE.B  D3,D6      ; D6 will contain the EA mode
+        RTS
+        
+
 
 ******** COMMON SHIFT FUNCTIONS ********
 * Returns:
@@ -467,6 +498,19 @@ PRINTNOT_REG:
         BLT     LOOPMEM
         BRA     DONE
         
+PRINTJSR_ADR
+        LEA     DISJSR,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        MOVE.B  D7,D4
+        CMP.B   #$2,D6
+        JSR     PRINT_INDIRECT_ADR
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        MOVE.W  (A2)+,D2
+        CMP.L   ENADR,A2
+        BLT     LOOPMEM
+        BRA     DONE
 ******** PRINT REGISTER SHIFTS ********
 ******** PRINT LOGIC REGISTER SHIFTS ********
 PRINTLSL_REG:
@@ -693,6 +737,69 @@ PRINTD7:
         MOVE.B  #14, D0
         TRAP    #15
         RTS
+        
+**************************************
+******** PRINT INDIRECT ADDRESS REGISTERS ********
+**************************************
+* D4 should contain indirect address register
+PRINT_INDIRECT_ADR:
+        CMP.B #$7,D4
+        BEQ PRINT_INA7
+        CMP.B #$6,D4
+        BEQ PRINT_INA6
+        CMP.B #$5,D4
+        BEQ PRINT_INA5
+        CMP.B #$4,D4
+        BEQ PRINT_INA4
+        CMP.B #$3,D4
+        BEQ PRINT_INA3
+        CMP.B #$2,D4
+        BEQ PRINT_INA2
+        CMP.B #$1,D4
+        BEQ PRINT_INA1
+        CMP.B #$0,D4
+        BEQ PRINT_INA0
+PRINT_INA0:
+        LEA     DIS_INA0,A1
+        MOVE.B  #14, D0
+        TRAP    #15
+        RTS
+PRINT_INA1:
+        LEA     DIS_INA1,A1
+        MOVE.B  #14, D0
+        TRAP    #15
+        RTS
+PRINT_INA2:
+        LEA     DIS_INA2,A1
+        MOVE.B  #14, D0
+        TRAP    #15
+        RTS
+PRINT_INA3:
+        LEA     DIS_INA3,A1
+        MOVE.B  #14, D0
+        TRAP    #15
+        RTS
+PRINT_INA4:
+        LEA     DIS_INA4,A1
+        MOVE.B  #14, D0
+        TRAP    #15
+        RTS
+PRINT_INA5:
+        LEA     DIS_INA5,A1
+        MOVE.B  #14, D0
+        TRAP    #15
+        RTS
+PRINT_INA6:
+        LEA     DIS_INA6,A1
+        MOVE.B  #14, D0
+        TRAP    #15
+        RTS
+PRINT_INA7:
+        LEA     DIS_INA7,A1
+        MOVE.B  #14, D0
+        TRAP    #15
+        RTS
+
 ****************************************
 ******** PRINT COMMON CHARCTERS ********
 ****************************************
@@ -729,6 +836,7 @@ DONE:
         CLR.L   D3
         CLR.L   D7
         END    START        ; last line of source
+
 
 
 *~Font name~Courier New~
