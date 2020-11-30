@@ -204,9 +204,9 @@ DECODELOGIC_CODE:
         CMP.B   #$4E,D3
         BEQ     DECODEJSR_REG   ; if the opcode starts with 0100 1110, then it is JSR opcode
         
-        *MOVE.L  D2,D3
-        *BTST.L  #8,D3
-        *BNE     DECODELEA_MEM   ; if the opcode starts with 0100 and the 8th binary is 1, then it is a LEA opcode
+        MOVE.L  D2,D3
+        BTST.L  #8,D3
+        BNE     DECODELEA_MEM   ; if the opcode starts with 0100 and the 8th binary is 1, then it is a LEA opcode
         
 DECODENOT_REG:
         JSR     GET_NOT_REG_LOGIC_DATA
@@ -220,6 +220,10 @@ DECODEJSR_REG:
         BEQ     PRINTJSR_ABS_ADR
 
 DECODELEA_MEM:
+        JSR     GET_LEA_LOGIC_DATA
+        CMP.B   #$2,D6
+        BEQ     PRINTLEA_ADR
+        
 ******** DECODE SHIFTS ********
 DECODESHIFTS:
         MOVE.W  D2,D3
@@ -475,6 +479,27 @@ GET_JSR_LOGIC_DATA:
         ANDI.B  #$7,D3
         MOVE.B  D3,D6      ; D6 will contain the EA mode
         RTS
+
+******** LEA LOGIC FUNCTIONS ***********
+* Returns:
+*   D7 - EA Register
+*   D6 - EA Mode   
+*   D5 - Address Register         
+GET_LEA_LOGIC_DATA:
+        MOVE.L  D2,D3
+        ANDI.B  #$7,D3
+        MOVE.B  D3,D7       ; D7 will contain the EA register
+        MOVE.L  D2,D3
+        LSR.W   #3,D3
+        ANDI.B  #$7,D3
+        MOVE.B  D3,D6       ; D6 will contain the EA mode
+        MOVE.L  D2,D3
+        LSR.W   #5,D3
+        LSR.W   #4,D3
+        ANDI.B  #$7,D3
+        MOVE.B  D3,D5
+        MOVE.L  D2,D3
+        RTS
         
 ******** ADDQ FUNCTIONS ********
 * Returns:
@@ -718,6 +743,24 @@ PRINTJSR_ABS_ADR:
         CMP.L   ENADR,A2
         BLT     LOOPMEM
         BRA     DONE
+        
+PRINTLEA_ADR:
+        LEA     DISLEA,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        MOVE.B  D7,D4
+        JSR     PRINT_An_IN
+        JSR     PRINTCOMMA
+        MOVE.B  D5,D4
+        JSR     PRINTAn
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        MOVE.W  (A2)+,D2
+        CMP.L   ENADR,A2
+        BLT     LOOPMEM
+        BRA     DONE
+        
+        
         
 ******** PRINT REGISTER SHIFTS ********
 ******** PRINT LOGIC REGISTER SHIFTS ********
