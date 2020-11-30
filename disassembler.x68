@@ -33,6 +33,7 @@ DISNOP  DC.B    'NOP',0
 DISRTS  DC.B    'RTS',0
 DISNOT  DC.B    'NOT',0
 DISJSR  DC.B    'JSR  ',0
+DISLEA  DC.B    'LEA  ',0
 DISLSL  DC.B    'LSL',0
 DISLSR  DC.B    'LSR',0
 DISASL  DC.B    'ASL',0
@@ -65,16 +66,6 @@ DISA4   DC.B    'A4',0
 DISA5   DC.B    'A5',0
 DISA6   DC.B    'A6',0
 DISA7   DC.B    'A7',0
-
-******** INDIRECT ADDRESS REGISTER PRINTS ********
-DIS_INA0    DC.B    '(A0)',0
-DIS_INA1    DC.B    '(A1)',0
-DIS_INA2    DC.B    '(A2)',0
-DIS_INA3    DC.B    '(A3)',0  
-DIS_INA4    DC.B    '(A4)',0
-DIS_INA5    DC.B    '(A5)',0
-DIS_INA6    DC.B    '(A6)',0
-DIS_INA7    DC.B    '(A7)',0
 
 ******** INVALID DATA ********
 DISDATA DC.B    ' DATA ',0
@@ -222,8 +213,11 @@ DECODENOT_REG:
         BRA     PRINTNOT_REG
 
 DECODEJSR_REG:
-        JSR     GET_JSR_REG_LOGIC_DATA
-        BRA     PRINTJSR_ADR
+        JSR     GET_JSR_LOGIC_DATA
+        CMP.B   #$2,D6
+        BEQ     PRINTJSR_ADR
+        CMP.B   #$7,D6      ; the EA is either word or long
+        BEQ     PRINTJSR_ABS_ADR
 
 DECODELEA_MEM:
 ******** DECODE SHIFTS ********
@@ -472,12 +466,12 @@ GET_NOT_REG_LOGIC_DATA:
 * Returns:
 *   D7 - EA Register
 *   D6 - EA Mode     
-GET_JSR_REG_LOGIC_DATA:
+GET_JSR_LOGIC_DATA:
         MOVE.L  D2,D3
         ANDI.B  #$7,D3
         MOVE.B  D3,D7      ; D7 will contain the EA register
         MOVE.L  D2,D3
-        LSR.W   #6,D3
+        LSR.W   #3,D3
         ANDI.B  #$7,D3
         MOVE.B  D3,D6      ; D6 will contain the EA mode
         RTS
@@ -594,6 +588,7 @@ GET_MEM_SHIFT_DATA:
         MOVE.L  D2,D3
         JSR     DETERMINE_ADDR_MODE
         RTS
+
 ******** DETERMINING ADDRESS MODES ********
 * D7 should contain register.
 * 000 for Word addressing
@@ -695,19 +690,35 @@ PRINTNOT_REG:
         BLT     LOOPMEM
         BRA     DONE
         
-PRINTJSR_ADR
+PRINTJSR_ADR:
         LEA     DISJSR,A1
         MOVE.B  #14,D0
         TRAP    #15
         MOVE.B  D7,D4
-        CMP.B   #$2,D6
-        JSR     PRINT_INDIRECT_ADR
+        JSR     PRINT_An_IN
         JSR     PRINTNEWLINE
         JSR     CLEAR_ALL
         MOVE.W  (A2)+,D2
         CMP.L   ENADR,A2
         BLT     LOOPMEM
         BRA     DONE
+        
+PRINTJSR_ABS_ADR:
+        LEA     DISJSR,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        JSR     DETERMINE_ADDR_MODE
+        JSR     PRINTDOLLAR
+        MOVE.L  D6,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        CMP.L   ENADR,A2
+        BLT     LOOPMEM
+        BRA     DONE
+        
 ******** PRINT REGISTER SHIFTS ********
 ******** PRINT LOGIC REGISTER SHIFTS ********
 PRINTLSL_REG:
@@ -1322,67 +1333,6 @@ PRINT_An_PRE:
         RTS
 
         
-**************************************
-******** PRINT INDIRECT ADDRESS REGISTERS ********
-**************************************
-* D4 should contain indirect address register
-PRINT_INDIRECT_ADR:
-        CMP.B #$7,D4
-        BEQ PRINT_INA7
-        CMP.B #$6,D4
-        BEQ PRINT_INA6
-        CMP.B #$5,D4
-        BEQ PRINT_INA5
-        CMP.B #$4,D4
-        BEQ PRINT_INA4
-        CMP.B #$3,D4
-        BEQ PRINT_INA3
-        CMP.B #$2,D4
-        BEQ PRINT_INA2
-        CMP.B #$1,D4
-        BEQ PRINT_INA1
-        CMP.B #$0,D4
-        BEQ PRINT_INA0
-PRINT_INA0:
-        LEA     DIS_INA0,A1
-        MOVE.B  #14, D0
-        TRAP    #15
-        RTS
-PRINT_INA1:
-        LEA     DIS_INA1,A1
-        MOVE.B  #14, D0
-        TRAP    #15
-        RTS
-PRINT_INA2:
-        LEA     DIS_INA2,A1
-        MOVE.B  #14, D0
-        TRAP    #15
-        RTS
-PRINT_INA3:
-        LEA     DIS_INA3,A1
-        MOVE.B  #14, D0
-        TRAP    #15
-        RTS
-PRINT_INA4:
-        LEA     DIS_INA4,A1
-        MOVE.B  #14, D0
-        TRAP    #15
-        RTS
-PRINT_INA5:
-        LEA     DIS_INA5,A1
-        MOVE.B  #14, D0
-        TRAP    #15
-        RTS
-PRINT_INA6:
-        LEA     DIS_INA6,A1
-        MOVE.B  #14, D0
-        TRAP    #15
-        RTS
-PRINT_INA7:
-        LEA     DIS_INA7,A1
-        MOVE.B  #14, D0
-        TRAP    #15
-        RTS
 ****************************************
 ******** PRINT COMMON CHARCTERS ********
 ****************************************
