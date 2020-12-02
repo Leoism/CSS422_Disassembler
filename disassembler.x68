@@ -18,6 +18,7 @@ ASKST   DC.B    'Please enter starting address in hex:',0
 ASKEN   DC.B    CR,LF,'Please enter ending address in hex:',0
 DISST   DC.B    CR,LF,'Starting Address:',0
 DISEN   DC.B    CR,LF,'Ending Address:',0
+DISWAIT DC.B    'Please press any key to continue displaying',CR,LF,0
 INVALIDMSG DC.B    CR,LF,'You entered an invalid address. Try again.',CR,LF,0
 
 ******** COMMON CHARACTERS ********
@@ -166,6 +167,9 @@ READMEM:
         CLR.L   D1
         MOVE.L  STADR,A2    ; load starting address
 LOOPMEM:
+        ADDQ.L  #1,LOOPCOUNT
+        CMPI.L  #25,LOOPCOUNT
+        JSR     WAIT
         MOVE.L  A2,PC_COUNT
         MOVE.W  (A2),D2    ; each instruction is at least a word in machine code
         * Do action here *
@@ -1264,6 +1268,19 @@ PRINTDOLLAR:
 ***********************
 ******** MISC. ********
 ***********************
+WAIT:
+        BLT     RETURN     
+        LEA     DISWAIT,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        MOVE.B  #5,D0
+        TRAP    #15
+
+        MOVE.L  #0,LOOPCOUNT
+        RTS
+RETURN:
+        RTS
 PRINT_PC:
         MOVE.L  PC_COUNT,D1
         MOVE.B  #16,D2
