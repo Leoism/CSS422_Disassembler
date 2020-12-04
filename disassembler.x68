@@ -34,6 +34,7 @@ DISRTS  DC.B    'RTS',0
 DISNOT  DC.B    'NOT',0
 DISJSR  DC.B    'JSR  ',0
 DISLEA  DC.B    'LEA  ',0
+DISAND  DC.B    'AND',0
 DISLSL  DC.B    'LSL',0
 DISLSR  DC.B    'LSR',0
 DISASL  DC.B    'ASL',0
@@ -188,26 +189,26 @@ DECODELOGICS:
         LSR.W   #5,D3
         CMPI.B  #4,D3
         BEQ     DECODELOGIC_CODE
+        CMPI.B  #C,D3
+        BEQ     DECODE_AND
         BRA     DECODESHIFTS
         
 ******** DECODE LOGICS SEQUENCE ********
 DECODELOGIC_CODE:
         MOVE.W  D2,D3
         LSR.W   #8,D3
-        *ANDI.W  #$4600,D3
         CMP.B   #$46,D3
         BEQ     DECODENOT_REG   ; if the opcode starts with 0100 0110, then it is NOT opcode
         
         MOVE.W  D2,D3
         LSR.W   #8,D3
-        *ANDI.W  #$4E00,D3
         CMP.B   #$4E,D3
         BEQ     DECODEJSR_REG   ; if the opcode starts with 0100 1110, then it is JSR opcode
         
         MOVE.L  D2,D3
         BTST.L  #8,D3
         BNE     DECODELEA_MEM   ; if the opcode starts with 0100 and the 8th binary is 1, then it is a LEA opcode
-        
+
 DECODENOT_REG:
         JSR     GET_NOT_REG_LOGIC_DATA
         BRA     PRINTNOT_REG
@@ -223,6 +224,13 @@ DECODELEA_MEM:
         JSR     GET_LEA_LOGIC_DATA
         CMP.B   #$2,D6
         BEQ     PRINTLEA_ADR
+        CMP.B   #$7,D6
+        BEQ     PRINTLEA_ABS_ADR
+        
+******** DECODE AND ***********
+DECODE_AND:
+        JSR     GET_AND_DATA
+        BRA     PRINT_AND_DATA
         
 ******** DECODE SHIFTS ********
 DECODESHIFTS:
@@ -497,9 +505,35 @@ GET_LEA_LOGIC_DATA:
         LSR.W   #5,D3
         LSR.W   #4,D3
         ANDI.B  #$7,D3
-        MOVE.B  D3,D5
+        MOVE.B  D3,D5       ; D5 will contain the Address Register
         MOVE.L  D2,D3
         RTS
+        
+******** AND LOGIC FUNCTIONS ***********
+* Returns:
+*   D7 - EA Register
+*   D6 - EA Mode   
+*   D5 - Opmode
+*   D4 - Register
+GET_AND_DATA:
+        MOVE.L  D2,D3
+        ANDI.B  #$7,D3
+        MOVE.B  D3,D7       ; D7 will contain the EA register
+        MOVE.L  D2,D3
+        LSR.W   #3,D3
+        ANDI.B  #$7,D3
+        MOVE.B  D3,D6       ; D6 will contain the EA register
+        MOVE.L  D2,D3
+        LSR.W   #6,D3
+        ANDI.B  #$7,D3
+        MOVE.B  D3,D5       ; D5 will contain the opmode
+        MOVE.L  D2,D3
+        LSR.W   #9,D3
+        ANDI.B  #$7,D3
+        MOVE.B  D3,D4       ; D4 will contain the register number
+        MOVE.L  D2,D3
+        RTS
+        
         
 ******** ADDQ FUNCTIONS ********
 * Returns:
@@ -707,7 +741,7 @@ PRINTNOT_REG:
         TRAP    #15
         JSR     PRINTSIZEOP
         MOVE.B  D7,D4
-        JSR     PRINTDn
+        JSR     PRINTDn                 ; print the data register
         JSR     PRINTNEWLINE
         JSR     CLEAR_ALL
         MOVE.W  (A2)+,D2
@@ -720,7 +754,7 @@ PRINTJSR_ADR:
         MOVE.B  #14,D0
         TRAP    #15
         MOVE.B  D7,D4
-        JSR     PRINT_An_IN
+        JSR     PRINT_An_IN             ; Print the indirect address
         JSR     PRINTNEWLINE
         JSR     CLEAR_ALL
         MOVE.W  (A2)+,D2
@@ -733,7 +767,7 @@ PRINTJSR_ABS_ADR:
         MOVE.B  #14,D0
         TRAP    #15
         JSR     DETERMINE_ADDR_MODE
-        JSR     PRINTDOLLAR
+        JSR     PRINTDOLLAR             ; Print the absolute address
         MOVE.L  D6,D1
         MOVE.B  #16,D2
         MOVE.B  #15,D0
@@ -749,10 +783,10 @@ PRINTLEA_ADR:
         MOVE.B  #14,D0
         TRAP    #15
         MOVE.B  D7,D4
-        JSR     PRINT_An_IN
+        JSR     PRINT_An_IN             ; Print indirect address of the LEA EA
         JSR     PRINTCOMMA
         MOVE.B  D5,D4
-        JSR     PRINTAn
+        JSR     PRINTAn                 ;  Print the address register of the LEA destination
         JSR     PRINTNEWLINE
         JSR     CLEAR_ALL
         MOVE.W  (A2)+,D2
@@ -760,7 +794,163 @@ PRINTLEA_ADR:
         BLT     LOOPMEM
         BRA     DONE
         
+PRINTLEA_ABS_ADR:
+        LEA     DISLEA,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        JSR     DETERMINE_ADDR_MODE     ; Determine is it is a word or long absolute addressing
+        JSR     PRINTDOLLAR             ; print absolute address
+        MOVE.L  D6,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTCOMMA
+        MOVE.B  D5,D4
+        JSR     PRINTAn                 ; print destination address register
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        CMP.L   ENADR,A2
+        BLT     LOOPMEM
+        BRA     DONE
         
+************************************        
+******** PRINT AND INSTRUCTIONS ********
+************************************       
+PRINT_AND_DATA:
+        LEA     DISAND,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        BTST.L  #2,D5           ; determine opmode, start with 0 = <ea>, Dn; 1 = Dn, <ea>
+        BNE     PRINT_AND_EA_Dn
+        BRA     PRINT_AND_Dn_EA
+        
+PRINT_AND_EA_Dn:
+        ANDI.B  #$3,D5
+        JSR     PRINTSIZEOP
+        CMP.B   #0,D6
+        BEQ     PRINT_AND_Dn_Dn
+        CMP.B   #2,D6
+        BEQ     PRINT_AND_INAn_Dn
+        CMP.B   #3,D6
+        BEQ     PRINT_AND_POS_INAn_Dn
+        CMP.B   #4,D6
+        BEQ     PRINT_AND_PRE_INAn_Dn
+        CMP.B   #7,D6
+        BEQ     PRINT_ABS_ADR_Dn
+        
+        
+PRINT_AND_Dn_Dn:
+        MOVE.B  D4,D3       ; Temp. put the register to D3
+        MOVE.B  D7,D4
+        JSR     PRINTDn
+        JSR     PRINTCOMMA
+        MOVE.B  D3,D4
+        JSR     PRINTDn
+        BRA     CLOSING
+        
+PRINT_AND_INAn_Dn:
+        MOVE.B  D4,D3
+        MOVE.B  D7,D4
+        JSR     PRINT_An_IN
+        JSR     PRINTCOMMA
+        MOVE.B  D3,D4
+        JSR     PRINTDn
+        BRA     CLOSING
+        
+PRINT_AND_POS_INAn_Dn:
+        MOVE.B  D4,D3
+        MOVE.B  D7,D4
+        JSR     PRINT_An_IN
+        JSR     PRINTPLUS
+        JSR     PRINTCOMMA
+        MOVE.B  D3,D4
+        JSR     PRINTDn
+        BRA     CLOSING
+        
+PRINT_AND_PRE_INAn_Dn:
+        MOVE.B  D4,D3
+        MOVE.B  D7,D4
+        JSR     PRINTMINUS
+        JSR     PRINT_An_IN
+        JSR     PRINTCOMMA
+        MOVE.B  D3,D4
+        JSR     PRINTDn
+        BRA     CLOSING
+        
+PRINT_ABS_ADR_Dn:
+        JSR     DETERMINE_ADDR_MODE
+        JSR     PRINTDOLLAR
+        MOVE.L  D6,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTCOMMA
+        JSR     PRINTDn
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        CMP.L   ENADR,A2
+        BLT     LOOPMEM
+        BRA     DONE 
+        
+; TODO: Implement Immediate addressing #data for <ea>,Dn
+     
+PRINT_AND_Dn_EA:
+        ANDI.B  #$3,D5
+        JSR     PRINTSIZEOP
+        CMP.B   #2,D6
+        BEQ     PRINT_AND_Dn_INAn
+        CMP.B   #3,D6
+        BEQ     PRINT_AND_Dn_POS_INAn
+        CMP.B   #4,D6
+        BEQ     PRINT_AND_Dn_PRE_INAn
+        CMP.B   #7,D6
+        BEQ     PRINT_AND_Dn_ABS_ADR
+        
+PRINT_AND_Dn_INAn:
+        JSR     PRINTDn
+        JSR     PRINTCOMMA
+        MOVE.B  D7,D4
+        JSR     PRINT_An_IN
+        BRA     CLOSING
+        
+PRINT_AND_Dn_POS_INAn:
+        JSR     PRINTDn
+        JSR     PRINTCOMMA
+        JSR     PRINTPLUS
+        MOVE.B  D7,D4
+        JSR     PRINT_An_IN
+        BRA     CLOSING
+
+PRINT_AND_Dn_PRE_INAn:
+        JSR     PRINTDn
+        JSR     PRINTCOMMA
+        MOVE.B  D7,D4
+        JSR     PRINTMINUS
+        JSR     PRINT_An_IN
+        BRA     CLOSING
+        
+PRINT_AND_Dn_ABS_ADR:
+        JSR     PRINTDn
+        JSR     PRINTCOMMA
+        JSR     DETERMINE_ADDR_MODE
+        JSR     PRINTDOLLAR
+        MOVE.L  D6,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        CMP.L   ENADR,A2
+        BLT     LOOPMEM
+        BRA     DONE 
+        
+CLOSING:
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        MOVE.W  (A2)+,D2
+        CMP.L   ENADR,A2
+        BLT     LOOPMEM
+        BRA     DONE 
         
 ******** PRINT REGISTER SHIFTS ********
 ******** PRINT LOGIC REGISTER SHIFTS ********
@@ -1437,6 +1627,7 @@ DONE:
         CLR.L   D3
         CLR.L   D7
         END    START        ; last line of source
+
 
 
 
