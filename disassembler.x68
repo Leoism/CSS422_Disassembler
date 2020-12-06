@@ -13,6 +13,8 @@ STADR   DS.L    1        ; allocate long in memory for
 ENADR   DS.L    1        ; allocate for end address
 LOOPCOUNT DS.L  1       ; keep track of loop
 PC_COUNT  DC.L  1       ; keep track of pc
+IS_IN_MEM_BOOL DC.B  1
+
 ******** USER INPUT/OUTPUT/INTERACTIONS ********
 ASKST   DC.B    'Please enter starting address in hex:',0
 ASKEN   DC.B    CR,LF,'Please enter ending address in hex:',0
@@ -325,7 +327,7 @@ DECODE_ADDA_AnDn:
         * CHeck if we're dealing with effective addressing *
         CMPI.B  #%111,D7
         BEQ     DECODE_ADDA_EA
-        BRA     PRINT_ADDA_INDIRECT
+        BRA     PRINT_ADDA_INDIRECT_TYPE
 DECODE_ADDA_EA:
         JSR     GET_ADD_EA
         BRA     PRINT_ADDA_EA
@@ -518,7 +520,20 @@ GET_MEM_SHIFT_DATA:
         ANDI.L  #$7,D3
         MOVE.B  D3,D7      ; D7 will have register
         MOVE.L  D2,D3
+        JSR     IS_MEM_INDIRECT
+        CMPI.B  #$FF,IS_IN_MEM_BOOL
+        BEQ     RETURN  
         JSR     DETERMINE_ADDR_MODE
+        RTS
+IS_MEM_INDIRECT:
+        MOVE.W  D2,D3
+        LSR.W   #3,D3
+        ANDI.W  #%111,D3
+        CMPI.W  #%111,D3
+        BEQ     RETURN
+        MOVE.B  D7,D4
+        MOVE.B  D3,D7
+        MOVE.B #$FF,IS_IN_MEM_BOOL
         RTS
 ******** DETERMINING ADDRESS MODES ********
 * D7 should contain register.
@@ -586,6 +601,7 @@ PRINT_MEM_SHIFT_INFO:
         MOVE.B  #1,D5
         JSR     PRINTSIZEOP
 
+        JSR     PRINT_IS_MEM_IN
         JSR     PRINTDOLLAR
         MOVE.L  D6,D1
         MOVE.B  #16,D2
@@ -595,6 +611,16 @@ PRINT_MEM_SHIFT_INFO:
         JSR     PRINTNEWLINE
         JSR     CLEAR_ALL
         RTS
+PRINT_IS_MEM_IN:
+        CMPI.B  #$FF,IS_IN_MEM_BOOL
+        BNE     RETURN
+        MOVE.B  #0,IS_IN_MEM_BOOL
+        JSR     PRINT_ADDA_INDIRECT_TYPE
+        JSR     PRINTNEWLINE
+        MOVE.W  (A2)+,D2    ; address should be incremented at the end of each print
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
 ******** PRINT REGISTER SHIFTS ********
 ******** PRINT LOGIC REGISTER SHIFTS ********
 PRINTLSL_REG:
