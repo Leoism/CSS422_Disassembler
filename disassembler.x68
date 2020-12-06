@@ -327,7 +327,7 @@ DECODE_ADDA_AnDn:
         * CHeck if we're dealing with effective addressing *
         CMPI.B  #%111,D7
         BEQ     DECODE_ADDA_EA
-        BRA     PRINT_ADDA_INDIRECT_TYPE
+        BRA     PRINT_ADDA_INDIRECT
 DECODE_ADDA_EA:
         JSR     GET_ADD_EA
         BRA     PRINT_ADDA_EA
