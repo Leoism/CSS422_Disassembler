@@ -11,12 +11,17 @@ CR      EQU     $0D      ; Carriage return
 STADR   DS.L    1        ; allocate long in memory for
                          ; starting address
 ENADR   DS.L    1        ; allocate for end address
+LOOPCOUNT DS.L  1       ; keep track of loop
+PC_COUNT  DC.L  1       ; keep track of pc
+IS_IN_MEM_BOOL DC.B  1
 
 ******** USER INPUT/OUTPUT/INTERACTIONS ********
 ASKST   DC.B    'Please enter starting address in hex:',0
 ASKEN   DC.B    CR,LF,'Please enter ending address in hex:',0
 DISST   DC.B    CR,LF,'Starting Address:',0
 DISEN   DC.B    CR,LF,'Ending Address:',0
+DISWAIT DC.B    'Please press any key to continue displaying',0
+DISDONE DC.B    'Finished.',0
 INVALIDMSG DC.B    CR,LF,'You entered an invalid address. Try again.',CR,LF,0
 
 ******** COMMON CHARACTERS ********
@@ -28,6 +33,7 @@ DISPARENL DC.B   '(',0
 DISPARENR DC.B   ')',0
 DISPLUS DC.B    '+',0
 DISMIN  DC.B    '-',0
+DISTAB DC.B     '  ',0
 ******** INSTRUCTION PRINTS ********
 DISNOP  DC.B    'NOP',0
 DISRTS  DC.B    'RTS',0
@@ -70,7 +76,7 @@ DISA6   DC.B    'A6',0
 DISA7   DC.B    'A7',0
 
 ******** INVALID DATA ********
-DISDATA DC.B    ' DATA ',0
+DISDATA DC.B    '  DATA  ',0
         ORG     $1000     ; start at 1000
 START:          
 
@@ -168,9 +174,18 @@ READMEM:
         CLR.L   D7
         CLR.L   D3     
         CLR.L   D2
+        * Clear the screen
+        MOVE.W  $FF00,D1
+        MOVE.B  #15,D0
+        TRAP    #15
+
         CLR.L   D1
         MOVE.L  STADR,A2    ; load starting address
 LOOPMEM:
+        ADDQ.L  #1,LOOPCOUNT
+        CMPI.L  #30,LOOPCOUNT
+        JSR     WAIT
+        MOVE.L  A2,PC_COUNT
         MOVE.W  (A2),D2    ; each instruction is at least a word in machine code
         * Do action here *
 DECODENOP:
@@ -659,9 +674,23 @@ GET_MEM_SHIFT_DATA:
         ANDI.L  #$7,D3
         MOVE.B  D3,D7      ; D7 will have register
         MOVE.L  D2,D3
+        JSR     IS_MEM_INDIRECT
+        CMPI.B  #$FF,IS_IN_MEM_BOOL
+        BEQ     RETURN  
         JSR     DETERMINE_ADDR_MODE
         RTS
-
+        
+IS_MEM_INDIRECT:
+        MOVE.W  D2,D3
+        LSR.W   #3,D3
+        ANDI.W  #%111,D3
+        CMPI.W  #%111,D3
+        BEQ     RETURN
+        MOVE.B  D7,D4
+        MOVE.B  D3,D7
+        MOVE.B #$FF,IS_IN_MEM_BOOL
+        RTS
+        
 ******** DETERMINING ADDRESS MODES ********
 * D7 should contain register.
 * 000 for Word addressing
@@ -686,6 +715,7 @@ LONG_ADDR:
 ******** PRINT INSTRUCTIONS ********
 ************************************
 PRINTNOP:
+        JSR     PRINT_PC
         LEA     DISNOP,A1  ; display NOP string
         MOVE.B  #14,D0     
         TRAP    #15
@@ -719,6 +749,7 @@ PRINT_SHIFT_REG_CONT:
         MOVE.B  #14,D0
         TRAP    #15
 
+        CLR.L   D1
         MOVE.B  D4,D1
         MOVE.B  #10,D2
         MOVE.B  #15,D0
@@ -737,6 +768,7 @@ PRINT_MEM_SHIFT_INFO:
         MOVE.B  #1,D5
         JSR     PRINTSIZEOP
 
+        JSR     PRINT_IS_MEM_IN
         JSR     PRINTDOLLAR
         MOVE.L  D6,D1
         MOVE.B  #16,D2
@@ -746,6 +778,17 @@ PRINT_MEM_SHIFT_INFO:
         JSR     PRINTNEWLINE
         JSR     CLEAR_ALL
         RTS
+        
+PRINT_IS_MEM_IN:
+        CMPI.B  #$FF,IS_IN_MEM_BOOL
+        BNE     RETURN
+        MOVE.B  #0,IS_IN_MEM_BOOL
+        JSR     PRINT_ADDA_INDIRECT_TYPE
+        JSR     PRINTNEWLINE
+        MOVE.W  (A2)+,D2    ; address should be incremented at the end of each print
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
 ************************************        
 ******** PRINT LOGIC INSTRUCTIONS ********
 ************************************
@@ -1177,12 +1220,13 @@ CLOSING:
         CMP.L   ENADR,A2
         BLT     LOOPMEM
         BRA     DONE 
-        
+
 ******** PRINT REGISTER SHIFTS ********
 ******** PRINT LOGIC REGISTER SHIFTS ********
 PRINTLSL_REG:
         * D7: register, D6: is Count/Dn
         * D5: Size Op,  D4: Count/Dn
+        JSR     PRINT_PC
         LEA     DISLSL,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -1195,6 +1239,7 @@ PRINTLSL_REG:
 PRINTLSR_REG:
         * D7: register, D6: is Count/Dn
         * D5: Size Op,  D4: Count/Dn
+        JSR     PRINT_PC
         LEA     DISLSR,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -1208,6 +1253,7 @@ PRINTLSR_REG:
 PRINTASL_REG:
         * D7: register, D6: is Count/Dn
         * D5: Size Op,  D4: Count/Dn
+        JSR     PRINT_PC
         LEA     DISASL,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -1220,6 +1266,7 @@ PRINTASL_REG:
 PRINTASR_REG:
         * D7: register, D6: is Count/Dn
         * D5: Size Op,  D4: Count/Dn
+        JSR     PRINT_PC
         LEA     DISASR,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -1233,6 +1280,7 @@ PRINTASR_REG:
 PRINTROL_REG:
         * D7: register, D6: is Count/Dn
         * D5: Size Op,  D4: Count/Dn
+        JSR     PRINT_PC
         LEA     DISROL,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -1245,6 +1293,7 @@ PRINTROL_REG:
 PRINTROR_REG:
         * D7: register, D6: is Count/Dn
         * D5: Size Op,  D4: Count/Dn
+        JSR     PRINT_PC
         LEA     DISROR,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -1258,6 +1307,7 @@ PRINTROR_REG:
 ******** PRINT LOGIC MEMORY SHIFTS ********
 PRINTLSL_MEM:
         * D6 contains the EA
+        JSR     PRINT_PC
         LEA     DISLSL,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -1268,6 +1318,7 @@ PRINTLSL_MEM:
         BRA     DONE
 PRINTLSR_MEM:
         * D6 contains the EA
+        JSR     PRINT_PC
         LEA     DISLSR,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -1279,6 +1330,7 @@ PRINTLSR_MEM:
 ******** PRINT ARITHMETIC MEMORY SHIFTS ********
 PRINTASL_MEM:
         * D6 contains the EA
+        JSR     PRINT_PC
         LEA     DISASL,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -1289,6 +1341,7 @@ PRINTASL_MEM:
         BRA     DONE
 PRINTASR_MEM:
         * D6 contains the EA
+        JSR     PRINT_PC
         LEA     DISASR,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -1299,6 +1352,7 @@ PRINTASR_MEM:
         BRA     DONE
 PRINTROL_MEM:
         * D6 contains the EA
+        JSR     PRINT_PC
         LEA     DISROL,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -1309,6 +1363,7 @@ PRINTROL_MEM:
         BRA     DONE
 PRINTROR_MEM:
         * D6 contains the EA
+        JSR     PRINT_PC
         LEA     DISROR,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -1322,6 +1377,7 @@ PRINTROR_MEM:
 PRINT_ADD_Dn:
 *   D7 - register mode, D4 - register number
 *   D6 - opmode, D5 - register
+        JSR     PRINT_PC
         LEA     DISADD,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -1359,6 +1415,7 @@ PRINT_ADD_Dn_Ea:
 PRINT_ADD_EA:
 *   D7 - EA, D4 - register number
 *   D6 - opmode, D5 - register
+        JSR     PRINT_PC
         LEA     DISADD,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -1375,6 +1432,7 @@ PRINT_ADD_EA:
 PRINT_ADDA_DnAn:
 *   D7 - ea mode, D4 - ea number
 *   D6 - opmode, D5 - register
+        JSR     PRINT_PC
         LEA     DISADDA,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -1393,6 +1451,7 @@ PRINT_ADDA_DnAn:
         BRA     DONE
 ******** PRINT ADDA (An),An & (An)+,An & -(An),An ********
 PRINT_ADDA_INDIRECT:
+        JSR     PRINT_PC
         LEA     DISADDA,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -1414,6 +1473,7 @@ PRINT_ADDA_INDIRECT:
 PRINT_ADDA_EA:
 *   D7 - EA, D4 - register number
 *   D6 - opmode, D5 - register
+        JSR     PRINT_PC
         LEA     DISADDA,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -1435,6 +1495,7 @@ PRINT_ADDA_EA:
 PRINT_ADDQ_AnDn:
 * D7 - mode, D6 - data
 * D5 - size, D4 - register
+        JSR     PRINT_PC
         LEA     DISADDQ,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -1451,6 +1512,7 @@ PRINT_ADDQ_AnDn:
         BLT     LOOPMEM
         BRA     DONE
 PRINT_ADDQ_EA:
+        JSR     PRINT_PC
         LEA     DISADDQ,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -1467,6 +1529,7 @@ PRINT_ADDQ_EA:
         BLT     LOOPMEM
         BRA     DONE 
 PRINT_ADDQ_INDIRECT:
+        JSR     PRINT_PC
         LEA     DISADDQ,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -1485,6 +1548,7 @@ PRINT_ADDQ_INDIRECT:
 PRINT_SUB_Dn:
 *   D7 - register mode, D4 - register number
 *   D6 - opmode, D5 - register
+        JSR     PRINT_PC
         LEA     DISSUB,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -1508,6 +1572,7 @@ PRINT_SUB_Dn:
 PRINT_SUB_EA:
 *   D7 - EA, D4 - register number
 *   D6 - opmode, D5 - register
+        JSR     PRINT_PC
         LEA     DISSUB,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -1838,6 +1903,30 @@ PRINTDOLLAR:
 ***********************
 ******** MISC. ********
 ***********************
+WAIT:
+        BLT     RETURN     
+        LEA     DISWAIT,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        MOVE.B  #5,D0
+        TRAP    #15
+
+        MOVE.L  #0,LOOPCOUNT
+        RTS
+RETURN:
+        RTS
+PRINT_PC:
+        MOVE.L  PC_COUNT,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        CLR.L   D1   ; prevent dirty writing
+        LEA     DISTAB,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        RTS
 CLEAR_ALL:
         CLR.L   D1
         CLR.L   D2
@@ -1848,6 +1937,9 @@ CLEAR_ALL:
         CLR.L   D7
         RTS
 DONE:
+        LEA     DISDONE,A1
+        MOVE.B  #14,D0
+        TRAP    #15
         CLR.L   D1          ; clear up the data registers used.
         CLR.L   D2
         CLR.L   D3
