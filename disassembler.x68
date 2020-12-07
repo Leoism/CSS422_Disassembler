@@ -35,6 +35,7 @@ DISNOT  DC.B    'NOT',0
 DISJSR  DC.B    'JSR  ',0
 DISLEA  DC.B    'LEA  ',0
 DISAND  DC.B    'AND',0
+DISOR   DC.B    'OR',0
 DISLSL  DC.B    'LSL',0
 DISLSR  DC.B    'LSR',0
 DISASL  DC.B    'ASL',0
@@ -191,6 +192,8 @@ DECODELOGICS:
         BEQ     DECODELOGIC_CODE
         CMPI.B  #$C,D3
         BEQ     DECODE_AND
+        CMPI.B  #$8,D3
+        BEQ     DECODE_OR
         BRA     DECODESHIFTS
         
 ******** DECODE LOGICS SEQUENCE ********
@@ -233,6 +236,11 @@ DECODELEA_MEM:
 DECODE_AND:
         JSR     GET_AND_DATA
         BRA     PRINT_AND_DATA
+        
+******** DECODE OR  ***********
+DECODE_OR:
+        JSR     GET_AND_DATA
+        BRA     PRINT_OR_DATA
         
 ******** DECODE SHIFTS ********
 DECODESHIFTS:
@@ -753,6 +761,7 @@ PRINTNOT:
         BEQ     PRINTNOT_PRE_INAn
         CMP.B   #7,D6
         BEQ     PRINTNOT_ABS_ADR
+        BRA     INVALIDOP
 
 PRINTNOT_REG:
         LEA     DISNOT,A1   ; display NOT string
@@ -883,7 +892,7 @@ PRINT_AND_EA_Dn:
         CMP.B   #4,D6
         BEQ     PRINT_AND_PRE_INAn_Dn
         CMP.B   #7,D6
-        BEQ     PRINT_ABS_ADR_Dn
+        BEQ     PRINT_AND_ABS_ADR_Dn
         BRA     INVALIDOP
         
         
@@ -929,7 +938,7 @@ PRINT_AND_PRE_INAn_Dn:
         JSR     PRINTDn
         BRA     CLOSING
         
-PRINT_ABS_ADR_Dn:
+PRINT_AND_ABS_ADR_Dn:
         JSR     PRINT_AND_OPENING
         JSR     DETERMINE_ADDR_MODE
         JSR     DOLLAR_OR_HASHTAG
@@ -1005,6 +1014,148 @@ PRINT_AND_OPENING:
         ANDI.B  #$3,D5
         JSR     PRINTSIZEOP
         RTS
+        
+************************************        
+******** PRINT OR INSTRUCTIONS ********
+************************************       
+PRINT_OR_DATA:
+        BTST.L  #2,D5           ; determine opmode, start with 0 = <ea>, Dn; 1 = Dn, <ea>
+        BEQ     PRINT_OR_EA_Dn
+        BRA     PRINT_OR_Dn_EA
+        
+PRINT_OR_EA_Dn:
+        CMP.B   #0,D6
+        BEQ     PRINT_OR_Dn_Dn
+        CMP.B   #2,D6
+        BEQ     PRINT_OR_INAn_Dn
+        CMP.B   #3,D6
+        BEQ     PRINT_OR_POS_INAn_Dn
+        CMP.B   #4,D6
+        BEQ     PRINT_OR_PRE_INAn_Dn
+        CMP.B   #7,D6
+        BEQ     PRINT_OR_ABS_ADR_Dn
+        BRA     INVALIDOP
+        
+        
+PRINT_OR_Dn_Dn:
+        JSR     PRINT_OR_OPENING
+        MOVE.B  D4,D3       ; Temp. put the register to D3
+        MOVE.B  D7,D4
+        JSR     PRINTDn
+        JSR     PRINTCOMMA
+        MOVE.B  D3,D4
+        JSR     PRINTDn
+        BRA     CLOSING
+        
+PRINT_OR_INAn_Dn:
+        JSR     PRINT_OR_OPENING
+        MOVE.B  D4,D3
+        MOVE.B  D7,D4
+        JSR     PRINT_An_IN
+        JSR     PRINTCOMMA
+        MOVE.B  D3,D4
+        JSR     PRINTDn
+        BRA     CLOSING
+        
+PRINT_OR_POS_INAn_Dn:
+        JSR     PRINT_OR_OPENING
+        MOVE.B  D4,D3
+        MOVE.B  D7,D4
+        JSR     PRINT_An_IN
+        JSR     PRINTPLUS
+        JSR     PRINTCOMMA
+        MOVE.B  D3,D4
+        JSR     PRINTDn
+        BRA     CLOSING
+        
+PRINT_OR_PRE_INAn_Dn:
+        JSR     PRINT_OR_OPENING
+        MOVE.B  D4,D3
+        MOVE.B  D7,D4
+        JSR     PRINTMINUS
+        JSR     PRINT_An_IN
+        JSR     PRINTCOMMA
+        MOVE.B  D3,D4
+        JSR     PRINTDn
+        BRA     CLOSING
+        
+PRINT_OR_ABS_ADR_Dn:
+        JSR     PRINT_OR_OPENING
+        JSR     DETERMINE_ADDR_MODE
+        JSR     DOLLAR_OR_HASHTAG
+        MOVE.L  D6,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTCOMMA
+        JSR     PRINTDn
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        CMP.L   ENADR,A2
+        BLT     LOOPMEM
+        BRA     DONE 
+     
+PRINT_OR_Dn_EA:
+        CMP.B   #2,D6
+        BEQ     PRINT_OR_Dn_INAn
+        CMP.B   #3,D6
+        BEQ     PRINT_OR_Dn_POS_INAn
+        CMP.B   #4,D6
+        BEQ     PRINT_OR_Dn_PRE_INAn
+        CMP.B   #7,D6
+        BEQ     PRINT_OR_Dn_ABS_ADR
+        BRA     INVALIDOP
+        
+PRINT_OR_Dn_INAn:
+        JSR     PRINT_OR_OPENING
+        JSR     PRINTDn
+        JSR     PRINTCOMMA
+        MOVE.B  D7,D4
+        JSR     PRINT_An_IN
+        BRA     CLOSING
+        
+PRINT_OR_Dn_POS_INAn:
+        JSR     PRINT_OR_OPENING
+        JSR     PRINTDn
+        JSR     PRINTCOMMA
+        MOVE.B  D7,D4
+        JSR     PRINT_An_IN
+        JSR     PRINTPLUS
+        BRA     CLOSING
+
+PRINT_OR_Dn_PRE_INAn:
+        JSR     PRINT_OR_OPENING
+        JSR     PRINTDn
+        JSR     PRINTCOMMA
+        MOVE.B  D7,D4
+        JSR     PRINTMINUS
+        JSR     PRINT_An_IN
+        BRA     CLOSING
+        
+PRINT_OR_Dn_ABS_ADR:
+        JSR     PRINT_OR_OPENING
+        JSR     PRINTDn
+        JSR     PRINTCOMMA
+        JSR     DETERMINE_ADDR_MODE
+        JSR     PRINTDOLLAR
+        MOVE.L  D6,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        CMP.L   ENADR,A2
+        BLT     LOOPMEM
+        BRA     DONE 
+      
+PRINT_OR_OPENING:
+        LEA     DISOR,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        ANDI.B  #$3,D5
+        JSR     PRINTSIZEOP
+        RTS
+
         
 DOLLAR_OR_HASHTAG:
         CMP.B   #4,D7
