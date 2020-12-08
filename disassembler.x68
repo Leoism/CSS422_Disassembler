@@ -970,6 +970,8 @@ GET_ADD_EA:
         BEQ     ADD_WORD_ADDR
         CMP.B   #1,D4
         BEQ     ADD_LONG_ADDR
+        CMPI.B  #%100,D4
+        BEQ     ADD_WORD_ADDR
         BRA     INVALIDOP
 ADD_WORD_ADDR:
         * Increment PC Counter
@@ -1834,6 +1836,7 @@ PRINT_ADDA_EA:
         TRAP    #15
 
         JSR     PRINT_ADDA_OPMODE
+        JSR     IS_EA_OR_IMME_ADDA
         JSR     PRINT_ADDA_EADDR
         JSR     PRINTCOMMA
 
@@ -1968,6 +1971,10 @@ PRINT_ADDA_INDIRECT_TYPE:
         BEQ     PRINT_An_POST
         CMPI.B  #%100,D7
         BEQ     PRINT_An_PRE
+        RTS
+IS_EA_OR_IMME_ADDA:
+        CMPI.B  #%100,D4
+        BEQ     PRINTPOUND
         RTS
 PRINT_ADDA_EADDR:
         JSR     PRINTDOLLAR
