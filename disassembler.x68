@@ -215,7 +215,7 @@ DECODELOGICS:
 DECODELOGIC_CODE:
         MOVE.W  D2,D3
         BTST.L  #11,D3
-        BNE     DECODE_MOVEM
+        BNE     CHECK_IS_MOVEM_OR_JSR
         LSR.W   #8,D3
         CMP.B   #$46,D3
         BEQ     DECODENOT_REG   ; if the opcode starts with 0100 0110, then it is NOT opcode
@@ -228,7 +228,10 @@ DECODELOGIC_CODE:
         MOVE.L  D2,D3
         BTST.L  #8,D3
         BNE     DECODELEA_MEM   ; if the opcode starts with 0100 and the 8th binary is 1, then it is a LEA opcode
-
+CHECK_IS_MOVEM_OR_JSR:
+        BTST.L  #9,D3
+        BEQ     DECODE_MOVEM
+        BNE     DECODEJSR_REG
 DECODENOT_REG:
         JSR     GET_NOT_LOGIC_DATA
         BRA     PRINTNOT
@@ -515,6 +518,7 @@ DECODE_MOVEQ:
         MOVE.W  D2,D3
         
 DECODE_MOVEM:
+        BRA     INVALIDOP
         MOVE.W  D2,D3
         LSR.W   #7,D3
         ANDI.W  #%111,D3
