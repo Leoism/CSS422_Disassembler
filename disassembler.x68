@@ -36,6 +36,12 @@ DISMIN  DC.B    '-',0
 DISTAB DC.B     '  ',0
 ******** INSTRUCTION PRINTS ********
 DISNOP  DC.B    'NOP',0
+DISRTS  DC.B    'RTS',0
+DISNOT  DC.B    'NOT',0
+DISJSR  DC.B    'JSR  ',0
+DISLEA  DC.B    'LEA  ',0
+DISAND  DC.B    'AND',0
+DISOR   DC.B    'OR',0
 DISLSL  DC.B    'LSL',0
 DISLSR  DC.B    'LSR',0
 DISASL  DC.B    'ASL',0
@@ -68,6 +74,7 @@ DISA4   DC.B    'A4',0
 DISA5   DC.B    'A5',0
 DISA6   DC.B    'A6',0
 DISA7   DC.B    'A7',0
+
 ******** INVALID DATA ********
 DISDATA DC.B    '  DATA  ',0
         ORG     $1000     ; start at 1000
@@ -186,6 +193,70 @@ DECODENOP:
         EORI.W  #$4E71,D3   ; NOP XOR NOP would equal 0
         CMP.W   #0,D3
         BEQ     PRINTNOP
+DECODERTS:
+        MOVE.W  D2, D3      ; make a copy in d3 to run tests on the copy
+        EORI.W  #$4E75,D3  ; RTS XOR RTS would eqaul 0
+        CMP.W   #0,D3
+        BEQ     PRINTRTS
+******** DECODE LOGICS ********
+DECODELOGICS:
+        MOVE.W  D2,D3
+        LSR.W   #7,D3       ; NOT, LEA, JSR starts with 0100, RTS starts with 0100 too, but it has a seperate check
+        LSR.W   #5,D3
+        CMPI.B  #4,D3
+        BEQ     DECODELOGIC_CODE
+        CMPI.B  #$C,D3
+        BEQ     DECODE_AND
+        CMPI.B  #$8,D3
+        BEQ     DECODE_OR
+        BRA     DECODESHIFTS
+        
+******** DECODE LOGICS SEQUENCE ********
+DECODELOGIC_CODE:
+        MOVE.W  D2,D3
+        LSR.W   #8,D3
+        CMP.B   #$46,D3
+        BEQ     DECODENOT_REG   ; if the opcode starts with 0100 0110, then it is NOT opcode
+        
+        MOVE.W  D2,D3
+        LSR.W   #8,D3
+        CMP.B   #$4E,D3
+        BEQ     DECODEJSR_REG   ; if the opcode starts with 0100 1110, then it is JSR opcode
+        
+        MOVE.L  D2,D3
+        BTST.L  #8,D3
+        BNE     DECODELEA_MEM   ; if the opcode starts with 0100 and the 8th binary is 1, then it is a LEA opcode
+
+DECODENOT_REG:
+        JSR     GET_NOT_LOGIC_DATA
+        BRA     PRINTNOT
+        
+DECODEJSR_REG:
+        JSR     GET_JSR_LOGIC_DATA
+        CMP.B   #$2,D6
+        BEQ     PRINTJSR_ADR
+        CMP.B   #$7,D6      ; the EA is either word or long
+        BEQ     PRINTJSR_ABS_ADR
+        BRA     INVALIDOP
+
+DECODELEA_MEM:
+        JSR     GET_LEA_LOGIC_DATA
+        CMP.B   #$2,D6
+        BEQ     PRINTLEA_ADR
+        CMP.B   #$7,D6
+        BEQ     PRINTLEA_ABS_ADR
+        BRA     INVALIDOP
+        
+******** DECODE AND ***********
+DECODE_AND:
+        JSR     GET_AND_DATA
+        BRA     PRINT_AND_DATA
+        
+******** DECODE OR  ***********
+DECODE_OR:
+        JSR     GET_AND_DATA
+        BRA     PRINT_OR_DATA
+        
 ******** DECODE SHIFTS ********
 DECODESHIFTS:
         MOVE.W  D2,D3
@@ -411,6 +482,88 @@ INVALIDOP:                 ; when an opcode is invalid, print the address, 'data
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
         BRA     DONE
+
+******** NOT LOGIC FUNCTIONS ***********
+* Returns:
+*   D7 - EA Register
+*   D6 - EA Mode
+*   D5 - Contains size
+GET_NOT_LOGIC_DATA:
+        MOVE.L  D2,D3
+        ANDI.B  #$7,D3
+        MOVE.B  D3,D7      ; D7 will contain the EA register
+        MOVE.L  D2,D3
+        LSR.W   #3,D3
+        ANDI.B  #$7,D3
+        MOVE.B  D3,D6      ; D6 will contain 000 because its for data register
+        MOVE.L  D2,D3
+        LSR.W   #6,D3
+        ANDI.B  #$7,D3
+        MOVE.B  D3,D5      ; D5 will contain the size, 0 for B, 1 for word, 2 for long      
+        RTS
+ 
+******** JSR LOGIC FUNCTIONS ***********
+* Returns:
+*   D7 - EA Register
+*   D6 - EA Mode     
+GET_JSR_LOGIC_DATA:
+        MOVE.L  D2,D3
+        ANDI.B  #$7,D3
+        MOVE.B  D3,D7      ; D7 will contain the EA register
+        MOVE.L  D2,D3
+        LSR.W   #3,D3
+        ANDI.B  #$7,D3
+        MOVE.B  D3,D6      ; D6 will contain the EA mode
+        RTS
+
+******** LEA LOGIC FUNCTIONS ***********
+* Returns:
+*   D7 - EA Register
+*   D6 - EA Mode   
+*   D5 - Address Register         
+GET_LEA_LOGIC_DATA:
+        MOVE.L  D2,D3
+        ANDI.B  #$7,D3
+        MOVE.B  D3,D7       ; D7 will contain the EA register
+        MOVE.L  D2,D3
+        LSR.W   #3,D3
+        ANDI.B  #$7,D3
+        MOVE.B  D3,D6       ; D6 will contain the EA mode
+        MOVE.L  D2,D3
+        LSR.W   #5,D3
+        LSR.W   #4,D3
+        ANDI.B  #$7,D3
+        MOVE.B  D3,D5       ; D5 will contain the Address Register
+        MOVE.L  D2,D3
+        RTS
+        
+******** AND LOGIC FUNCTIONS ***********
+* Returns:
+*   D7 - EA Register
+*   D6 - EA Mode   
+*   D5 - Opmode
+*   D4 - Register
+GET_AND_DATA:
+        MOVE.L  D2,D3
+        ANDI.B  #$7,D3
+        MOVE.B  D3,D7       ; D7 will contain the EA register
+        MOVE.L  D2,D3
+        LSR.W   #3,D3
+        ANDI.B  #$7,D3
+        MOVE.B  D3,D6       ; D6 will contain the EA register
+        MOVE.L  D2,D3
+        LSR.W   #6,D3
+        ANDI.B  #$7,D3
+        MOVE.B  D3,D5       ; D5 will contain the opmode
+        MOVE.L  D2,D3
+        LSR.W   #4,D3
+        LSR.W   #5,D3
+        ANDI.B  #$7,D3
+        MOVE.B  D3,D4       ; D4 will contain the register number
+        MOVE.L  D2,D3
+        RTS
+        
+        
 ******** ADDQ FUNCTIONS ********
 * Returns:
 *   D5 - contains size operation
@@ -485,6 +638,7 @@ ADD_LONG_ADDR:
         CMP.W   #0,(A2)+   ; instructions are word size
         MOVE.L  (A2)+,D7    ; D6 will contain the address
         RTS
+
 ******** COMMON SHIFT FUNCTIONS ********
 * Returns:
 *   D7 - Register
@@ -525,6 +679,7 @@ GET_MEM_SHIFT_DATA:
         BEQ     RETURN  
         JSR     DETERMINE_ADDR_MODE
         RTS
+        
 IS_MEM_INDIRECT:
         MOVE.W  D2,D3
         LSR.W   #3,D3
@@ -535,6 +690,7 @@ IS_MEM_INDIRECT:
         MOVE.B  D3,D7
         MOVE.B #$FF,IS_IN_MEM_BOOL
         RTS
+        
 ******** DETERMINING ADDRESS MODES ********
 * D7 should contain register.
 * 000 for Word addressing
@@ -569,6 +725,17 @@ PRINTNOP:
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
         BRA     DONE
+
+PRINTRTS:
+        LEA     DISRTS,A1   ; display RTS string
+        MOVE.B  #14,D0
+        TRAP    #15
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        MOVE.W  (A2)+,D2    ; address should be incremented at the end of each print
+        CMP.L   ENADR,A2    ; keep looping until reach the end address
+        BLT     LOOPMEM
+        BRA     DONE            
 
 ******** PRINT SHIFT INSTRUCTIONS ********
 ******** COMMON SHIFT FUNCS ********
@@ -611,6 +778,7 @@ PRINT_MEM_SHIFT_INFO:
         JSR     PRINTNEWLINE
         JSR     CLEAR_ALL
         RTS
+        
 PRINT_IS_MEM_IN:
         CMPI.B  #$FF,IS_IN_MEM_BOOL
         BNE     RETURN
@@ -621,6 +789,438 @@ PRINT_IS_MEM_IN:
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
         BRA     DONE
+************************************        
+******** PRINT LOGIC INSTRUCTIONS ********
+************************************
+; PRINT NOT EA:
+PRINTNOT:
+        CMP.B   #0,D6
+        BEQ     PRINTNOT_REG
+        CMP.B   #2,D6
+        BEQ     PRINTNOT_INAn
+        CMP.B   #3,D6
+        BEQ     PRINTNOT_POS_INAn
+        CMP.B   #4,D6
+        BEQ     PRINTNOT_PRE_INAn
+        CMP.B   #7,D6
+        BEQ     PRINTNOT_ABS_ADR
+        BRA     INVALIDOP
+
+PRINTNOT_REG:
+        LEA     DISNOT,A1   ; display NOT string
+        MOVE.B  #14,D0
+        TRAP    #15
+        JSR     PRINTSIZEOP
+        MOVE.B  D7,D4
+        JSR     PRINTDn                 ; print the data register
+        BRA     CLOSING
+        
+PRINTNOT_INAn:
+        LEA     DISNOT,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        JSR     PRINTSIZEOP
+        MOVE.B  D7,D4
+        JSR     PRINT_An_IN
+        BRA     CLOSING
+        
+PRINTNOT_POS_INAn:
+        LEA     DISNOT,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        JSR     PRINTSIZEOP
+        MOVE.B  D7,D4
+        JSR     PRINT_An_IN
+        JSR     PRINTPLUS
+        BRA     CLOSING
+
+PRINTNOT_PRE_INAn:
+        LEA     DISNOT,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        JSR     PRINTSIZEOP
+        JSR     PRINTMINUS
+        MOVE.B  D7,D4
+        JSR     PRINT_An_IN
+        BRA     CLOSING
+        
+PRINTNOT_ABS_ADR:
+        LEA     DISNOT,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        JSR     PRINTSIZEOP
+        JSR     DETERMINE_ADDR_MODE
+        JSR     PRINTDOLLAR
+        MOVE.L  D6,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        CMP.L   ENADR,A2
+        BLT     LOOPMEM
+        BRA     DONE
+      
+; PRINT JSR EA  
+PRINTJSR_ADR:
+        LEA     DISJSR,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        MOVE.B  D7,D4
+        JSR     PRINT_An_IN             ; Print the indirect address
+        BRA     CLOSING
+        
+PRINTJSR_ABS_ADR:
+        LEA     DISJSR,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        JSR     DETERMINE_ADDR_MODE
+        JSR     PRINTDOLLAR             ; Print the absolute address
+        MOVE.L  D6,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        CMP.L   ENADR,A2
+        BLT     LOOPMEM
+        BRA     DONE
+        
+; PRINT LEA EA     
+PRINTLEA_ADR:
+        LEA     DISLEA,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        MOVE.B  D7,D4
+        JSR     PRINT_An_IN             ; Print indirect address of the LEA EA
+        JSR     PRINTCOMMA
+        MOVE.B  D5,D4
+        JSR     PRINTAn                 ;  Print the address register of the LEA destination
+        BRA     CLOSING
+        
+PRINTLEA_ABS_ADR:
+        LEA     DISLEA,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        JSR     DETERMINE_ADDR_MODE     ; Determine is it is a word or long absolute addressing
+        JSR     PRINTDOLLAR             ; print absolute address
+        MOVE.L  D6,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTCOMMA
+        MOVE.B  D5,D4
+        JSR     PRINTAn                 ; print destination address register
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        CMP.L   ENADR,A2
+        BLT     LOOPMEM
+        BRA     DONE
+        
+************************************        
+******** PRINT AND INSTRUCTIONS ********
+************************************       
+PRINT_AND_DATA:
+        BTST.L  #2,D5           ; determine opmode, start with 0 = <ea>, Dn; 1 = Dn, <ea>
+        BEQ     PRINT_AND_EA_Dn
+        BRA     PRINT_AND_Dn_EA
+        
+PRINT_AND_EA_Dn:
+        CMP.B   #0,D6
+        BEQ     PRINT_AND_Dn_Dn
+        CMP.B   #2,D6
+        BEQ     PRINT_AND_INAn_Dn
+        CMP.B   #3,D6
+        BEQ     PRINT_AND_POS_INAn_Dn
+        CMP.B   #4,D6
+        BEQ     PRINT_AND_PRE_INAn_Dn
+        CMP.B   #7,D6
+        BEQ     PRINT_AND_ABS_ADR_Dn
+        BRA     INVALIDOP
+        
+        
+PRINT_AND_Dn_Dn:
+        JSR     PRINT_AND_OPENING
+        MOVE.B  D4,D3       ; Temp. put the register to D3
+        MOVE.B  D7,D4
+        JSR     PRINTDn
+        JSR     PRINTCOMMA
+        MOVE.B  D3,D4
+        JSR     PRINTDn
+        BRA     CLOSING
+        
+PRINT_AND_INAn_Dn:
+        JSR     PRINT_AND_OPENING
+        MOVE.B  D4,D3
+        MOVE.B  D7,D4
+        JSR     PRINT_An_IN
+        JSR     PRINTCOMMA
+        MOVE.B  D3,D4
+        JSR     PRINTDn
+        BRA     CLOSING
+        
+PRINT_AND_POS_INAn_Dn:
+        JSR     PRINT_AND_OPENING
+        MOVE.B  D4,D3
+        MOVE.B  D7,D4
+        JSR     PRINT_An_IN
+        JSR     PRINTPLUS
+        JSR     PRINTCOMMA
+        MOVE.B  D3,D4
+        JSR     PRINTDn
+        BRA     CLOSING
+        
+PRINT_AND_PRE_INAn_Dn:
+        JSR     PRINT_AND_OPENING
+        MOVE.B  D4,D3
+        MOVE.B  D7,D4
+        JSR     PRINTMINUS
+        JSR     PRINT_An_IN
+        JSR     PRINTCOMMA
+        MOVE.B  D3,D4
+        JSR     PRINTDn
+        BRA     CLOSING
+        
+PRINT_AND_ABS_ADR_Dn:
+        JSR     PRINT_AND_OPENING
+        JSR     DETERMINE_ADDR_MODE
+        JSR     DOLLAR_OR_HASHTAG
+        MOVE.L  D6,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTCOMMA
+        JSR     PRINTDn
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        CMP.L   ENADR,A2
+        BLT     LOOPMEM
+        BRA     DONE 
+     
+PRINT_AND_Dn_EA:
+        CMP.B   #2,D6
+        BEQ     PRINT_AND_Dn_INAn
+        CMP.B   #3,D6
+        BEQ     PRINT_AND_Dn_POS_INAn
+        CMP.B   #4,D6
+        BEQ     PRINT_AND_Dn_PRE_INAn
+        CMP.B   #7,D6
+        BEQ     PRINT_AND_Dn_ABS_ADR
+        BRA     INVALIDOP
+        
+PRINT_AND_Dn_INAn:
+        JSR     PRINT_AND_OPENING
+        JSR     PRINTDn
+        JSR     PRINTCOMMA
+        MOVE.B  D7,D4
+        JSR     PRINT_An_IN
+        BRA     CLOSING
+        
+PRINT_AND_Dn_POS_INAn:
+        JSR     PRINT_AND_OPENING
+        JSR     PRINTDn
+        JSR     PRINTCOMMA
+        MOVE.B  D7,D4
+        JSR     PRINT_An_IN
+        JSR     PRINTPLUS
+        BRA     CLOSING
+
+PRINT_AND_Dn_PRE_INAn:
+        JSR     PRINT_AND_OPENING
+        JSR     PRINTDn
+        JSR     PRINTCOMMA
+        MOVE.B  D7,D4
+        JSR     PRINTMINUS
+        JSR     PRINT_An_IN
+        BRA     CLOSING
+        
+PRINT_AND_Dn_ABS_ADR:
+        JSR     PRINT_AND_OPENING
+        JSR     PRINTDn
+        JSR     PRINTCOMMA
+        JSR     DETERMINE_ADDR_MODE
+        JSR     PRINTDOLLAR
+        MOVE.L  D6,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        CMP.L   ENADR,A2
+        BLT     LOOPMEM
+        BRA     DONE 
+      
+PRINT_AND_OPENING:
+        LEA     DISAND,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        ANDI.B  #$3,D5
+        JSR     PRINTSIZEOP
+        RTS
+        
+************************************        
+******** PRINT OR INSTRUCTIONS ********
+************************************       
+PRINT_OR_DATA:
+        BTST.L  #2,D5           ; determine opmode, start with 0 = <ea>, Dn; 1 = Dn, <ea>
+        BEQ     PRINT_OR_EA_Dn
+        BRA     PRINT_OR_Dn_EA
+        
+PRINT_OR_EA_Dn:
+        CMP.B   #0,D6
+        BEQ     PRINT_OR_Dn_Dn
+        CMP.B   #2,D6
+        BEQ     PRINT_OR_INAn_Dn
+        CMP.B   #3,D6
+        BEQ     PRINT_OR_POS_INAn_Dn
+        CMP.B   #4,D6
+        BEQ     PRINT_OR_PRE_INAn_Dn
+        CMP.B   #7,D6
+        BEQ     PRINT_OR_ABS_ADR_Dn
+        BRA     INVALIDOP
+        
+        
+PRINT_OR_Dn_Dn:
+        JSR     PRINT_OR_OPENING
+        MOVE.B  D4,D3       ; Temp. put the register to D3
+        MOVE.B  D7,D4
+        JSR     PRINTDn
+        JSR     PRINTCOMMA
+        MOVE.B  D3,D4
+        JSR     PRINTDn
+        BRA     CLOSING
+        
+PRINT_OR_INAn_Dn:
+        JSR     PRINT_OR_OPENING
+        MOVE.B  D4,D3
+        MOVE.B  D7,D4
+        JSR     PRINT_An_IN
+        JSR     PRINTCOMMA
+        MOVE.B  D3,D4
+        JSR     PRINTDn
+        BRA     CLOSING
+        
+PRINT_OR_POS_INAn_Dn:
+        JSR     PRINT_OR_OPENING
+        MOVE.B  D4,D3
+        MOVE.B  D7,D4
+        JSR     PRINT_An_IN
+        JSR     PRINTPLUS
+        JSR     PRINTCOMMA
+        MOVE.B  D3,D4
+        JSR     PRINTDn
+        BRA     CLOSING
+        
+PRINT_OR_PRE_INAn_Dn:
+        JSR     PRINT_OR_OPENING
+        MOVE.B  D4,D3
+        MOVE.B  D7,D4
+        JSR     PRINTMINUS
+        JSR     PRINT_An_IN
+        JSR     PRINTCOMMA
+        MOVE.B  D3,D4
+        JSR     PRINTDn
+        BRA     CLOSING
+        
+PRINT_OR_ABS_ADR_Dn:
+        JSR     PRINT_OR_OPENING
+        JSR     DETERMINE_ADDR_MODE
+        JSR     DOLLAR_OR_HASHTAG
+        MOVE.L  D6,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTCOMMA
+        JSR     PRINTDn
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        CMP.L   ENADR,A2
+        BLT     LOOPMEM
+        BRA     DONE 
+     
+PRINT_OR_Dn_EA:
+        CMP.B   #2,D6
+        BEQ     PRINT_OR_Dn_INAn
+        CMP.B   #3,D6
+        BEQ     PRINT_OR_Dn_POS_INAn
+        CMP.B   #4,D6
+        BEQ     PRINT_OR_Dn_PRE_INAn
+        CMP.B   #7,D6
+        BEQ     PRINT_OR_Dn_ABS_ADR
+        BRA     INVALIDOP
+        
+PRINT_OR_Dn_INAn:
+        JSR     PRINT_OR_OPENING
+        JSR     PRINTDn
+        JSR     PRINTCOMMA
+        MOVE.B  D7,D4
+        JSR     PRINT_An_IN
+        BRA     CLOSING
+        
+PRINT_OR_Dn_POS_INAn:
+        JSR     PRINT_OR_OPENING
+        JSR     PRINTDn
+        JSR     PRINTCOMMA
+        MOVE.B  D7,D4
+        JSR     PRINT_An_IN
+        JSR     PRINTPLUS
+        BRA     CLOSING
+
+PRINT_OR_Dn_PRE_INAn:
+        JSR     PRINT_OR_OPENING
+        JSR     PRINTDn
+        JSR     PRINTCOMMA
+        MOVE.B  D7,D4
+        JSR     PRINTMINUS
+        JSR     PRINT_An_IN
+        BRA     CLOSING
+        
+PRINT_OR_Dn_ABS_ADR:
+        JSR     PRINT_OR_OPENING
+        JSR     PRINTDn
+        JSR     PRINTCOMMA
+        JSR     DETERMINE_ADDR_MODE
+        JSR     PRINTDOLLAR
+        MOVE.L  D6,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        CMP.L   ENADR,A2
+        BLT     LOOPMEM
+        BRA     DONE 
+      
+PRINT_OR_OPENING:
+        LEA     DISOR,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        ANDI.B  #$3,D5
+        JSR     PRINTSIZEOP
+        RTS
+
+        
+DOLLAR_OR_HASHTAG:
+        CMP.B   #4,D7
+        BEQ     HASHTAG
+        BRA     DOLLAR
+        
+HASHTAG:
+        JSR     PRINTPOUND
+        RTS
+        
+DOLLAR:
+        JSR     PRINTDOLLAR
+        RTS
+  
+CLOSING:
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        MOVE.W  (A2)+,D2
+        CMP.L   ENADR,A2
+        BLT     LOOPMEM
+        BRA     DONE 
+
 ******** PRINT REGISTER SHIFTS ********
 ******** PRINT LOGIC REGISTER SHIFTS ********
 PRINTLSL_REG:
@@ -1183,6 +1783,7 @@ PRINTD7:
         MOVE.B  #14, D0
         TRAP    #15
         RTS
+        
 * D4 should contain data register
 PRINTAn:
         CMP.B #$7,D4
@@ -1254,6 +1855,8 @@ PRINT_An_PRE:
         JSR     PRINTMINUS
         JSR     PRINT_An_IN
         RTS
+
+        
 ****************************************
 ******** PRINT COMMON CHARCTERS ********
 ****************************************
@@ -1342,6 +1945,12 @@ DONE:
         CLR.L   D3
         CLR.L   D7
         END    START        ; last line of source
+
+
+
+
+
+
 
 *~Font name~Courier New~
 *~Font size~10~
