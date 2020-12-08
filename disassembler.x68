@@ -727,6 +727,7 @@ PRINTNOP:
         BRA     DONE
 
 PRINTRTS:
+        JSR     PRINT_PC
         LEA     DISRTS,A1   ; display RTS string
         MOVE.B  #14,D0
         TRAP    #15
@@ -807,6 +808,7 @@ PRINTNOT:
         BRA     INVALIDOP
 
 PRINTNOT_REG:
+        JSR     PRINT_PC
         LEA     DISNOT,A1   ; display NOT string
         MOVE.B  #14,D0
         TRAP    #15
@@ -816,6 +818,7 @@ PRINTNOT_REG:
         BRA     CLOSING
         
 PRINTNOT_INAn:
+        JSR     PRINT_PC
         LEA     DISNOT,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -825,6 +828,7 @@ PRINTNOT_INAn:
         BRA     CLOSING
         
 PRINTNOT_POS_INAn:
+        JSR     PRINT_PC
         LEA     DISNOT,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -835,6 +839,7 @@ PRINTNOT_POS_INAn:
         BRA     CLOSING
 
 PRINTNOT_PRE_INAn:
+        JSR     PRINT_PC
         LEA     DISNOT,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -845,6 +850,7 @@ PRINTNOT_PRE_INAn:
         BRA     CLOSING
         
 PRINTNOT_ABS_ADR:
+        JSR     PRINT_PC
         LEA     DISNOT,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -863,6 +869,7 @@ PRINTNOT_ABS_ADR:
       
 ; PRINT JSR EA  
 PRINTJSR_ADR:
+        JSR     PRINT_PC
         LEA     DISJSR,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -871,6 +878,7 @@ PRINTJSR_ADR:
         BRA     CLOSING
         
 PRINTJSR_ABS_ADR:
+        JSR     PRINT_PC
         LEA     DISJSR,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -888,6 +896,7 @@ PRINTJSR_ABS_ADR:
         
 ; PRINT LEA EA     
 PRINTLEA_ADR:
+        JSR     PRINT_PC
         LEA     DISLEA,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -899,6 +908,7 @@ PRINTLEA_ADR:
         BRA     CLOSING
         
 PRINTLEA_ABS_ADR:
+        JSR     PRINT_PC
         LEA     DISLEA,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -1051,6 +1061,7 @@ PRINT_AND_Dn_ABS_ADR:
         BRA     DONE 
       
 PRINT_AND_OPENING:
+        JSR     PRINT_PC
         LEA     DISAND,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -1192,6 +1203,7 @@ PRINT_OR_Dn_ABS_ADR:
         BRA     DONE 
       
 PRINT_OR_OPENING:
+        JSR     PRINT_PC
         LEA     DISOR,A1
         MOVE.B  #14,D0
         TRAP    #15
@@ -1945,6 +1957,7 @@ DONE:
         CLR.L   D3
         CLR.L   D7
         END    START        ; last line of source
+
 
 
 
