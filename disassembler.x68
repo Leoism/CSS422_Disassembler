@@ -348,7 +348,7 @@ DECODE_SUB:
         LSR.W   #7,D3
         LSR.W   #5,D3
         CMPI.B  #9,D3
-        BNE     INVALIDOP
+        BNE     INVALIDOP * <--------- here we do the MOVE commands
         MOVE.W  D2,D3
 ******** DECODE SUB Dn,Dn ********
 DECODE_SUB_Dn:
@@ -368,6 +368,100 @@ DECODE_SUB_Dn:
 DECODE_SUB_EA:
         JSR     GET_ADD_EA
         BRA     PRINT_SUB_EA
+*****************************
+******** DECODE MOVE ********
+*****************************
+DECODE_MOVE:
+        MOVE.W  D2,D3
+        LSR.W   #7,D3
+        LSR.W   #4,D3
+        CMPI.W  #%01001,D3
+        BEQ     DECODE_MOVEM
+        
+        MOVE.W  D2,D3
+        LSR.W   #7,D3
+        LSR.W   #5,D3
+        CMPI.W  #%0111,D3
+        BEQ     DECODE_MOVEQ
+        
+        MOVE.W  D2,D3
+        LSR.W   #7,D3
+        LSR.W   #7,D3
+        CMPI.B  #%00,D3
+        BNE     INVALIDOP
+        
+        MOVE.W  D2,D3
+        LSR.W   #7,D3
+        LSR.W   #5,D3
+        ANDI.W  #%0011,D3
+        CMPI.B  #%00,D3
+        BEQ     INVALIDOP
+        
+        MOVE.W  D2,D3
+        LSR.W   #7,D3
+        ANDI.W  #$7,D3
+        CMPI.W  #%001,D3
+        BEQ     DECODE_MOVEA
+        
+        
+DECODE_MOVEA:
+        JSR     GET_MOVE_SIZE
+        CMPI.B  #%01,D7
+        BEQ     INVALIDOP *MOVEA does not support bytes
+
+        MOVE.W  D2,D3
+        LSR.W   #7,D3
+        ANDI.W  #$7,D3
+        CMPI.W  #%001,D3
+        MOVE.W  D3,D6 *getting destination register
+        
+        JSR     GET_MOVE_SOURCE
+        
+DECODE_MOVEQ:
+        MOVE.W  D2,D3
+        LSR.W   #7,D3
+        LSR.W   #1,D3
+        ANDI.W  #$1,D3
+        CMPI.B  #%0,D3
+        BNE     INVALIDOP
+        MOVE.W  D2,D3
+        
+DECODE_MOVEM:
+        MOVE.W  D2,D3
+        LSR.W   #7,D3
+        ANDI.W  #%111,D3
+        CMPI.W  #%001,D3
+        BNE     INVALIDOP
+        MOVE.W  D2,D3
+        
+*******MOVE FUNCTIONS*******
+GET_MOVE_SIZE:
+        MOVE.W  D2,D3
+        LSR.W   #7,D3
+        LSR.W   #5,D3
+        ANDI.W  #%0011,D3
+        MOVE.B  D3,D7 *storing size in D7
+        RTS
+GET_MOVE_DEST:
+        MOVE.W  D2,D3
+        LSR.W   #6,D3
+        LSR.W   #3,D3
+        ANDI.W  #$7,D3
+        MOVE.W  D3,D4 *storing destination register in D4
+        MOVE.W  D2,D3
+        LSR.W   #6,D3
+        ANDI.W  #$7,D3
+        MOVE.W  D3,D5 *storing destination mode in D5
+        RTS
+GET_MOVE_SOURCE:
+        MOVE.W  D2,D3
+        LSR.W   #3,D3
+        ANDI.W  #$7,D3
+        MOVE.W  D3,D5 *storing source mode in D5
+        MOVE.W  D2,D3
+        ANDI.W  #$7,D3
+        MOVE.W  D3,D4 *storing source register in D4
+        RTS
 ******** INVALID OUTPUT ********
 * THIS SHOULD ALWAYS BE THE LAST DECODE BRANCH
 * THAT WAY AFTER ATTEMPTING ALL ADDRESSING MODE AND FAILING
@@ -1252,6 +1346,14 @@ DONE:
         CLR.L   D3
         CLR.L   D7
         END    START        ; last line of source
+
+
+
+
+
+
+
+
 
 *~Font name~Courier New~
 *~Font size~10~
