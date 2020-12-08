@@ -46,6 +46,12 @@ DISADD  DC.B    'ADD',0
 DISADDA DC.B    'ADDA',0
 DISADDQ DC.B    'ADDQ',0
 DISSUB  DC.B    'SUB',0
+DISBRA  DC.B    'BRA  ',0
+DISBLT  DC.B    'BLT  ',0
+DISBGT  DC.B    'BGT  ',0
+DISBLE  DC.B    'BLE  ',0
+DISBGE  DC.B    'BGE  ',0
+DISBEQ  DC.B    'BEQ  ',0
 ******** SIZE PRINTS ********
 DISB    DC.B    '.B  ',0
 DISW    DC.B    '.W  ',0
@@ -363,7 +369,7 @@ DECODE_SUB:
         LSR.W   #7,D3
         LSR.W   #5,D3
         CMPI.B  #9,D3
-        BNE     INVALIDOP
+        BNE     DECODEBRANCHES
         MOVE.W  D2,D3
 ******** DECODE SUB Dn,Dn ********
 DECODE_SUB_Dn:
@@ -383,6 +389,244 @@ DECODE_SUB_Dn:
 DECODE_SUB_EA:
         JSR     GET_ADD_EA
         BRA     PRINT_SUB_EA
+        
+*****************************
+******** DECODE Bcc ********
+*****************************
+******** DECODE BRA, Bcc ********
+*Assume that 0110 has been found branching to this
+*D2 is original, D3 is manipulated copy, D4 is Conditional(4b), d5 is displacement(8b)
+DECODEBRANCHES:
+        MOVE.W  D2,D3   *reinstate the full machine code
+        LSR.W   #7,D3 *0110 check probably in main method
+        LSR.W   #5,D3
+        CMPI.B  #%0110,D3
+        BNE     INVALIDOP *Or the next decoding branch
+        *-----------------------------------------------------------------------------
+        MOVE.W  D2,D3   *reinstate the full machine code
+        LSR.W   #7,D3
+        LSR.W   #1,D3   *Get to the conditional bits
+        ANDI.W  #$0F,D3 *Mask everything else to get conditional bits
+        CMPI.W  #0,D3
+        BEQ     DECODE_BRA
+        CMPI.W  #%1101,D3
+        BEQ     DECODE_BLT
+        CMPI.W  #%1110,D3
+        BEQ     DECODE_BGT
+        CMPI.W  #%1111,D3
+        BEQ     DECODE_BLE
+        CMPI.W  #%1100,D3
+        BEQ     DECODE_BGE
+        CMPI.W  #%0111,D3
+        BEQ     DECODE_BEQ
+DECODE_BRA:
+        JSR     PRINT_PC
+        *We know that conditional is 0000, BRA
+        JSR     PRINT_BRA *Print just BRA and come back
+        JSR     GET_DISPLACEMENT
+        CMP.W   #$00, D3    *Check if displacement = $00, word addressing
+        BEQ     BRANCH_WORD
+        CMP.W   #$FF, D3    *Check if displacement = $FF, long word addresing
+        BEQ     BRANCH_LONG
+        *If not, two's complement and subtract from current address   
+        NOT     D5          *Flip all
+        ADD.W   #%0000001, D5 *Add one
+        MOVE.L  PC_COUNT,D3 *Get current address
+        SUB.W  D5,D3        *Subtract D5 from current address
+        MOVE.L  D3,D1 *Print D3, as it is the address
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        MOVE.W  (A2)+,D2
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+DECODE_BLT:
+        JSR     PRINT_PC
+        *We know that conditional is 1101, BLT
+        JSR     PRINT_BLT *Print just BLT and come back
+        JSR     GET_DISPLACEMENT
+        CMP.W   #$00, D3    *Check if displacement = $00, word addressing
+        BEQ     BRANCH_WORD
+        CMP.W   #$FF, D3    *Check if displacement = $FF, long word addresing
+        BEQ     BRANCH_LONG
+        *If not, two's complement and subtract from current address   
+        NOT     D5          *Flip all
+        ADD.W   #%0000001, D5 *Add one
+        MOVE.L  PC_COUNT,D3 *Get current address
+        SUB.W  D5,D3        *Subtract D5 from current address
+        MOVE.L  D3,D1 *Print D3, as it is the address
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        MOVE.W  (A2)+,D2
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+DECODE_BGT:
+        JSR     PRINT_PC
+        *We know that conditional is 1110, BGT
+        JSR     PRINT_BGT *Print just BRA and come back
+        JSR     GET_DISPLACEMENT
+        CMP.W   #$00, D3    *Check if displacement = $00, word addressing
+        BEQ     BRANCH_WORD
+        CMP.W   #$FF, D3    *Check if displacement = $FF, long word addresing
+        BEQ     BRANCH_LONG
+        *If not, two's complement and subtract from current address   
+        NOT     D5          *Flip all
+        ADD.W   #%0000001, D5 *Add one
+        MOVE.L  PC_COUNT,D3 *Get current address
+        SUB.W  D5,D3        *Subtract D5 from current address
+        MOVE.L  D3,D1 *Print D3, as it is the address
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        MOVE.W  (A2)+,D2
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+DECODE_BLE:
+        JSR     PRINT_PC
+        *We know that conditional is 1111, BLE
+        JSR     PRINT_BLE *Print just BLE and come back
+        JSR     GET_DISPLACEMENT
+        CMP.W   #$00, D3    *Check if displacement = $00, word addressing
+        BEQ     BRANCH_WORD
+        CMP.W   #$FF, D3    *Check if displacement = $FF, long word addresing
+        BEQ     BRANCH_LONG
+        *If not, two's complement and subtract from current address   
+        NOT     D5          *Flip all
+        ADD.W   #%0000001, D5 *Add one
+        MOVE.L  PC_COUNT,D3 *Get current address
+        SUB.W  D5,D3        *Subtract D5 from current address
+        MOVE.L  D3,D1 *Print D3, as it is the address
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        MOVE.W  (A2)+,D2
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+DECODE_BGE:
+        JSR     PRINT_PC
+        *We know that conditional is 1100, BGE
+        JSR     PRINT_BGE *Print just BGE and come back
+        JSR     GET_DISPLACEMENT
+        CMP.W   #$00, D3    *Check if displacement = $00, word addressing
+        BEQ     BRANCH_WORD
+        CMP.W   #$FF, D3    *Check if displacement = $FF, long word addresing
+        BEQ     BRANCH_LONG
+        *If not, two's complement and subtract from current address   
+        NOT     D5          *Flip all
+        ADD.W   #%0000001, D5 *Add one
+        MOVE.L  PC_COUNT,D3 *Get current address
+        SUB.W  D5,D3        *Subtract D5 from current address
+        MOVE.L  D3,D1 *Print D3, as it is the address
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        MOVE.W  (A2)+,D2
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+DECODE_BEQ:  
+        JSR     PRINT_PC
+        *We know that conditional is 0111, BEQ
+        JSR     PRINT_BEQ *Print just BEQ and come back
+        JSR     GET_DISPLACEMENT
+        CMP.W   #$00, D3    *Check if displacement = $00, word addressing
+        BEQ     BRANCH_WORD
+        CMP.W   #$FF, D3    *Check if displacement = $FF, long word addresing
+        BEQ     BRANCH_LONG
+        *If not, two's complement and subtract from current address   
+        NOT     D5          *Flip all
+        ADD.W   #%0000001, D5 *Add one
+        MOVE.L  PC_COUNT,D3 *Get current address
+        SUB.W  D5,D3        *Subtract D5 from current address
+        MOVE.L  D3,D1 *Print D3, as it is the address
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        MOVE.W  (A2)+,D2
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+BRANCH_WORD:
+        MOVE.B  #0,D7 *(Set 000 for word)
+        JSR     DETERMINE_ADDR_MODE *Get word address
+        JSR     PRINTDOLLAR
+        MOVE.L  D6,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        MOVE.W  (A2)+,D2
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+BRANCH_LONG:
+        MOVE.B  #1,D7 *(Set 001 for long)
+        JSR     DETERMINE_ADDR_MODE *Get long address
+        JSR     PRINTDOLLAR
+        MOVE.L  D6,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTNEWLINE
+        JSR     CLEAR_ALL
+        MOVE.W  (A2)+,D2
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE  
+GET_DISPLACEMENT:
+        MOVE.L  D2,D3   *Get new copy
+        ANDI.W  #$FF,D3 *Mask first 8
+        MOVE.W  D3,D5   *Store displacement into d5
+        RTS
+PRINT_BRA: *Prints just BRA
+        LEA     DISBRA,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        RTS
+PRINT_BLT:
+        LEA     DISBLT,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        RTS
+PRINT_BGT:
+        LEA     DISBGT,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        RTS
+PRINT_BLE:
+        LEA     DISBLE,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        RTS
+PRINT_BGE:
+        LEA     DISBGE,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        RTS
+PRINT_BEQ:
+        LEA     DISBEQ,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        RTS
+        
 ******** INVALID OUTPUT ********
 * THIS SHOULD ALWAYS BE THE LAST DECODE BRANCH
 * THAT WAY AFTER ATTEMPTING ALL ADDRESSING MODE AND FAILING
@@ -1342,6 +1586,9 @@ DONE:
         CLR.L   D3
         CLR.L   D7
         END    START        ; last line of source
+
+
+
 
 *~Font name~Courier New~
 *~Font size~10~
