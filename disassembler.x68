@@ -214,6 +214,8 @@ DECODELOGICS:
 ******** DECODE LOGICS SEQUENCE ********
 DECODELOGIC_CODE:
         MOVE.W  D2,D3
+        BTST.W  #11,D3
+        BNE     DECODE_MOVEM
         LSR.W   #8,D3
         CMP.B   #$46,D3
         BEQ     DECODENOT_REG   ; if the opcode starts with 0100 0110, then it is NOT opcode
