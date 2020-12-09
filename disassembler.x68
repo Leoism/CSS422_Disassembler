@@ -64,6 +64,7 @@ DISBLE  DC.B    'BLE  ',0
 DISBGE  DC.B    'BGE  ',0
 DISBEQ  DC.B    'BEQ  ',0
 DISMOVEM DC.B   'MOVEM',0
+DISMOVEQ DC.B   'MOVEQ',0
 ******** SIZE PRINTS ********
 DISB    DC.B    '.B  ',0
 DISW    DC.B    '.W  ',0
@@ -788,7 +789,9 @@ DECODE_MOVEQ:
         CMPI.B  #%0,D3
         BNE     INVALIDOP
         MOVE.W  D2,D3
-        BRA     INVALIDOP
+        JSR     GET_MOVEQ_DATA
+        JSR     GET_MOVEQ_REG
+        BRA     PRINT_MOVEQ
 DECODE_MOVEM:
         MOVE.W  D2,D3
         LSR.W   #7,D3
@@ -803,7 +806,20 @@ DECODE_MOVEM:
         CMPI.B  #%0,MOVEM_DR_VAR
         BEQ     DETERMINE_MOVEM_REG2MEM
         BRA     DETERMINE_MOVEM_MEM2REG
-*******MOVE FUNCTIONS*******
+******* MOVEQ FUNCTIONS ********
+GET_MOVEQ_DATA:
+        MOVE.W  D2,D3
+        ANDI.W  #$FF,D3
+        MOVE.W  D3,D7
+        RTS
+GET_MOVEQ_REG:
+        MOVE.W  D2,D3
+        LSR.W   #7,D3
+        LSR.W   #2,D3
+        ANDI.W  #$7,D3
+        MOVE.W  D3,D4
+        RTS
+******* MOVEM FUNCTIONS *******
 DETERMINE_MOVEM_REG2MEM:
         CMPI.W  #%111,D5
         BEQ     PRINT_MOVEM_REG2MEM_EA
@@ -822,6 +838,7 @@ DETERMINE_MOVEM_MEM2REG:
         BEQ     PRINT_MOVEM_MEM2REG_IN
         JSR     INVALIDEA
         JSR     SKIPTONEXTOP
+****** MOVE FUNCTIONS *******
 GET_MOVE_SIZE:
         MOVE.W  D2,D3
         LSR.W   #7,D3
@@ -2013,6 +2030,24 @@ PRINT_SUB_EA:
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
         BRA     DONE
+******** MOVEQ FUNCTIONS ********
+PRINT_MOVEQ:
+        JSR     PRINT_PC
+        LEA     DISMOVEQ,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        JSR     PRINTL
+
+        JSR     PRINTPOUND
+        JSR     PRINTDOLLAR
+        MOVE.B  D7,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTCOMMA
+        JSR     PRINTDn
+        JSR     PRINTNEWLINE
+        JSR     SKIPTONEXTOP
 *********** MOVEM PRINTING ***********
 PRINT_MOVEM_REG2MEM_EA:
         MOVE.W  D4,D7
