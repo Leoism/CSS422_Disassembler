@@ -23,7 +23,7 @@ DISEN   DC.B    CR,LF,'Ending Address:',0
 DISWAIT DC.B    'Please press any key to continue displaying',0
 DISDONE DC.B    'Finished.',0
 INVALIDMSG DC.B    CR,LF,'You entered an invalid address. Try again.',CR,LF,0
-
+INVALIDEAMSG DC.B    'Invalid EA for: ',0
 ******** COMMON CHARACTERS ********
 NEWLINE DC.B    CR,LF,0
 DISCOMMA DC.B   ',',0
@@ -2287,6 +2287,16 @@ PRINTDOLLAR:
 ***********************
 ******** MISC. ********
 ***********************
+INVALIDEA:
+        LEA     INVALIDEAMSG,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        RTS
+SKIPTONEXTOP:
+        MOVE.W  (A2)+,D2
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
 WAIT:
         BLT     RETURN     
         LEA     DISWAIT,A1
