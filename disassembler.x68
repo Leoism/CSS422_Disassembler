@@ -518,8 +518,8 @@ DECODE_BRA:
         *If not, two's complement and subtract from current address
         JSR     PRINTDOLLAR   
         MOVE.L  PC_COUNT,D3 *Get current address
-        ADD.W  D5,D3        *Subtract D5 from current address
-        ADD.W   #2,D3
+        ADD.B  D5,D3        *Subtract D5 from current address
+        ADD.B   #2,D3
         MOVE.L  D3,D1 *Print D3, as it is the address
         MOVE.B  #16,D2
         MOVE.B  #15,D0
@@ -542,8 +542,8 @@ DECODE_BLT:
         *If not, two's complement and subtract from current address
         JSR     PRINTDOLLAR   
         MOVE.L  PC_COUNT,D3 *Get current address
-        ADD.W  D5,D3        *Subtract D5 from current address
-        ADD.W   #2,D3
+        ADD.B  D5,D3        *Subtract D5 from current address
+        ADD.B   #2,D3
         MOVE.L  D3,D1 *Print D3, as it is the address
         MOVE.B  #16,D2
         MOVE.B  #15,D0
@@ -566,8 +566,8 @@ DECODE_BGT:
         *If not, two's complement and subtract from current address
         JSR     PRINTDOLLAR   
         MOVE.L  PC_COUNT,D3 *Get current address
-        ADD.W  D5,D3        *Subtract D5 from current address
-        ADD.W   #2,D3
+        ADD.B  D5,D3        *Subtract D5 from current address
+        ADD.B   #2,D3
         MOVE.L  D3,D1 *Print D3, as it is the address
         MOVE.B  #16,D2
         MOVE.B  #15,D0
@@ -590,8 +590,8 @@ DECODE_BLE:
         *If not, two's complement and subtract from current address
         JSR     PRINTDOLLAR   
         MOVE.L  PC_COUNT,D3 *Get current address
-        ADD.W  D5,D3        *Subtract D5 from current address
-        ADD.W   #2,D3
+        ADD.B  D5,D3        *Subtract D5 from current address
+        ADD.B   #2,D3
         MOVE.L  D3,D1 *Print D3, as it is the address
         MOVE.B  #16,D2
         MOVE.B  #15,D0
@@ -614,8 +614,8 @@ DECODE_BGE:
         *If not, two's complement and subtract from current address 
         JSR     PRINTDOLLAR  
         MOVE.L  PC_COUNT,D3 *Get current address
-        ADD.W  D5,D3        *Subtract D5 from current address
-        ADD.W   #2,D3
+        ADD.B  D5,D3        *Subtract D5 from current address
+        ADD.B   #2,D3
         MOVE.L  D3,D1 *Print D3, as it is the address
         MOVE.B  #16,D2
         MOVE.B  #15,D0
@@ -638,8 +638,8 @@ DECODE_BEQ:
         *If not, two's complement and subtract from current address
         JSR     PRINTDOLLAR   
         MOVE.L  PC_COUNT,D3 *Get current address
-        ADD.W  D5,D3        *Subtract D5 from current address
-        ADD.W   #2,D3
+        ADD.B  D5,D3        *Subtract D5 from current address
+        ADD.B   #2,D3
         MOVE.L  D3,D1 *Print D3, as it is the address
         MOVE.B  #16,D2
         MOVE.B  #15,D0
@@ -666,7 +666,6 @@ BRANCH_WORD:
         TRAP    #15
         JSR     PRINTNEWLINE
         JSR     CLEAR_ALL
-        MOVE.W  (A2)+,D2
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
         BRA     DONE
@@ -686,7 +685,6 @@ BRANCH_LONG:
         TRAP    #15
         JSR     PRINTNEWLINE
         JSR     CLEAR_ALL
-        MOVE.W  (A2)+,D2
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
         BRA     DONE  
