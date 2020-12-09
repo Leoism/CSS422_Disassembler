@@ -2294,6 +2294,11 @@ INVALIDEA:
         MOVE.B  #14,D0
         TRAP    #15
         RTS
+SKIPTONEXTOP:
+        MOVE.W  (A2)+,D2
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
 WAIT:
         BLT     RETURN     
         LEA     DISWAIT,A1
