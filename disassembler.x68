@@ -260,11 +260,23 @@ DECODELEA_MEM:
         
 ******** DECODE AND ***********
 DECODE_AND:
+        ; Check if the opcode is MULS
+        MOVE.W  D2,D3
+        LSR.W   #6,D3
+        ANDI.W  #$3,D3
+        CMPI.W  #$3,D3
+        BEQ     INVALIDOP
         JSR     GET_AND_DATA
         BRA     PRINT_AND_DATA
         
 ******** DECODE OR  ***********
 DECODE_OR:
+        ; Check if the opcode is not DIVU
+        MOVE.W  D2,D3
+        LSR.W   #6,D3
+        ANDI.W  #$3,D3
+        CMPI.W  #$3,D3
+        BEQ     INVALIDOP
         JSR     GET_AND_DATA
         BRA     PRINT_OR_DATA
         
@@ -2307,6 +2319,7 @@ DONE:
         CLR.L   D3
         CLR.L   D7
         END    START        ; last line of source
+
 
 
 
