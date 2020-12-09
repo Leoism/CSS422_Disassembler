@@ -507,19 +507,19 @@ DECODEBRANCHES:
         CMPI.W  #%0111,D3
         BEQ     DECODE_BEQ
 DECODE_BRA:
+        JSR     GET_DISPLACEMENT
         JSR     PRINT_PC
         *We know that conditional is 0000, BRA
         JSR     PRINT_BRA *Print just BRA and come back
-        JSR     GET_DISPLACEMENT
         CMP.W   #$00, D3    *Check if displacement = $00, word addressing
         BEQ     BRANCH_WORD
         CMP.W   #$FF, D3    *Check if displacement = $FF, long word addresing
         BEQ     BRANCH_LONG
-        *If not, two's complement and subtract from current address   
-        NOT     D5          *Flip all
-        ADD.W   #%0000001, D5 *Add one
+        *If not, two's complement and subtract from current address
+        JSR     PRINTDOLLAR   
         MOVE.L  PC_COUNT,D3 *Get current address
-        SUB.W  D5,D3        *Subtract D5 from current address
+        ADD.W  D5,D3        *Subtract D5 from current address
+        ADD.W   #2,D3
         MOVE.L  D3,D1 *Print D3, as it is the address
         MOVE.B  #16,D2
         MOVE.B  #15,D0
@@ -531,19 +531,19 @@ DECODE_BRA:
         BLT     LOOPMEM
         BRA     DONE
 DECODE_BLT:
+        JSR     GET_DISPLACEMENT
         JSR     PRINT_PC
         *We know that conditional is 1101, BLT
         JSR     PRINT_BLT *Print just BLT and come back
-        JSR     GET_DISPLACEMENT
         CMP.W   #$00, D3    *Check if displacement = $00, word addressing
         BEQ     BRANCH_WORD
         CMP.W   #$FF, D3    *Check if displacement = $FF, long word addresing
         BEQ     BRANCH_LONG
-        *If not, two's complement and subtract from current address   
-        NOT     D5          *Flip all
-        ADD.W   #%0000001, D5 *Add one
+        *If not, two's complement and subtract from current address
+        JSR     PRINTDOLLAR   
         MOVE.L  PC_COUNT,D3 *Get current address
-        SUB.W  D5,D3        *Subtract D5 from current address
+        ADD.W  D5,D3        *Subtract D5 from current address
+        ADD.W   #2,D3
         MOVE.L  D3,D1 *Print D3, as it is the address
         MOVE.B  #16,D2
         MOVE.B  #15,D0
@@ -555,19 +555,19 @@ DECODE_BLT:
         BLT     LOOPMEM
         BRA     DONE
 DECODE_BGT:
+        JSR     GET_DISPLACEMENT
         JSR     PRINT_PC
         *We know that conditional is 1110, BGT
         JSR     PRINT_BGT *Print just BRA and come back
-        JSR     GET_DISPLACEMENT
         CMP.W   #$00, D3    *Check if displacement = $00, word addressing
         BEQ     BRANCH_WORD
         CMP.W   #$FF, D3    *Check if displacement = $FF, long word addresing
         BEQ     BRANCH_LONG
-        *If not, two's complement and subtract from current address   
-        NOT     D5          *Flip all
-        ADD.W   #%0000001, D5 *Add one
+        *If not, two's complement and subtract from current address
+        JSR     PRINTDOLLAR   
         MOVE.L  PC_COUNT,D3 *Get current address
-        SUB.W  D5,D3        *Subtract D5 from current address
+        ADD.W  D5,D3        *Subtract D5 from current address
+        ADD.W   #2,D3
         MOVE.L  D3,D1 *Print D3, as it is the address
         MOVE.B  #16,D2
         MOVE.B  #15,D0
@@ -579,19 +579,19 @@ DECODE_BGT:
         BLT     LOOPMEM
         BRA     DONE
 DECODE_BLE:
+        JSR     GET_DISPLACEMENT
         JSR     PRINT_PC
         *We know that conditional is 1111, BLE
         JSR     PRINT_BLE *Print just BLE and come back
-        JSR     GET_DISPLACEMENT
         CMP.W   #$00, D3    *Check if displacement = $00, word addressing
         BEQ     BRANCH_WORD
         CMP.W   #$FF, D3    *Check if displacement = $FF, long word addresing
         BEQ     BRANCH_LONG
-        *If not, two's complement and subtract from current address   
-        NOT     D5          *Flip all
-        ADD.W   #%0000001, D5 *Add one
+        *If not, two's complement and subtract from current address
+        JSR     PRINTDOLLAR   
         MOVE.L  PC_COUNT,D3 *Get current address
-        SUB.W  D5,D3        *Subtract D5 from current address
+        ADD.W  D5,D3        *Subtract D5 from current address
+        ADD.W   #2,D3
         MOVE.L  D3,D1 *Print D3, as it is the address
         MOVE.B  #16,D2
         MOVE.B  #15,D0
@@ -603,19 +603,19 @@ DECODE_BLE:
         BLT     LOOPMEM
         BRA     DONE
 DECODE_BGE:
+        JSR     GET_DISPLACEMENT
         JSR     PRINT_PC
         *We know that conditional is 1100, BGE
         JSR     PRINT_BGE *Print just BGE and come back
-        JSR     GET_DISPLACEMENT
         CMP.W   #$00, D3    *Check if displacement = $00, word addressing
         BEQ     BRANCH_WORD
         CMP.W   #$FF, D3    *Check if displacement = $FF, long word addresing
         BEQ     BRANCH_LONG
-        *If not, two's complement and subtract from current address   
-        NOT     D5          *Flip all
-        ADD.W   #%0000001, D5 *Add one
+        *If not, two's complement and subtract from current address 
+        JSR     PRINTDOLLAR  
         MOVE.L  PC_COUNT,D3 *Get current address
-        SUB.W  D5,D3        *Subtract D5 from current address
+        ADD.W  D5,D3        *Subtract D5 from current address
+        ADD.W   #2,D3
         MOVE.L  D3,D1 *Print D3, as it is the address
         MOVE.B  #16,D2
         MOVE.B  #15,D0
@@ -627,19 +627,19 @@ DECODE_BGE:
         BLT     LOOPMEM
         BRA     DONE
 DECODE_BEQ:  
+        JSR     GET_DISPLACEMENT
         JSR     PRINT_PC
         *We know that conditional is 0111, BEQ
         JSR     PRINT_BEQ *Print just BEQ and come back
-        JSR     GET_DISPLACEMENT
         CMP.W   #$00, D3    *Check if displacement = $00, word addressing
         BEQ     BRANCH_WORD
         CMP.W   #$FF, D3    *Check if displacement = $FF, long word addresing
         BEQ     BRANCH_LONG
-        *If not, two's complement and subtract from current address   
-        NOT     D5          *Flip all
-        ADD.W   #%0000001, D5 *Add one
+        *If not, two's complement and subtract from current address
+        JSR     PRINTDOLLAR   
         MOVE.L  PC_COUNT,D3 *Get current address
-        SUB.W  D5,D3        *Subtract D5 from current address
+        ADD.W  D5,D3        *Subtract D5 from current address
+        ADD.W   #2,D3
         MOVE.L  D3,D1 *Print D3, as it is the address
         MOVE.B  #16,D2
         MOVE.B  #15,D0
@@ -654,7 +654,13 @@ BRANCH_WORD:
         MOVE.B  #0,D7 *(Set 000 for word)
         JSR     DETERMINE_ADDR_MODE *Get word address
         JSR     PRINTDOLLAR
-        MOVE.L  D6,D1
+
+        MOVE.L  PC_COUNT,D3 *Get current address
+        *Displacement is stored in D6
+        ADD.W   D6,D3
+        ADD.W   #2,D3
+        MOVE.L  D3,D1 *Print D3, as it is the address
+
         MOVE.B  #16,D2
         MOVE.B  #15,D0
         TRAP    #15
@@ -668,7 +674,13 @@ BRANCH_LONG:
         MOVE.B  #1,D7 *(Set 001 for long)
         JSR     DETERMINE_ADDR_MODE *Get long address
         JSR     PRINTDOLLAR
-        MOVE.L  D6,D1
+
+        MOVE.L  PC_COUNT,D3 *Get current address
+        *Displacement is stored in D6
+        ADD.L   D6,D3
+        ADD.L   #2,D3
+        MOVE.L  D3,D1 *Print D3, as it is the address
+
         MOVE.B  #16,D2
         MOVE.B  #15,D0
         TRAP    #15
