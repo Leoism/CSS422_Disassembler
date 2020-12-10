@@ -14,7 +14,7 @@ ENADR   DS.L    1        ; allocate for end address
 LOOPCOUNT DS.L  1       ; keep track of loop
 PC_COUNT  DC.L  1       ; keep track of pc
 IS_IN_MEM_BOOL DC.B  1
-
+TEMP_CURR_OP DC.W 1
 ******** USER INPUT/OUTPUT/INTERACTIONS ********
 ASKST   DC.B    'Please enter starting address in hex:',0
 ASKEN   DC.B    CR,LF,'Please enter ending address in hex:',0
@@ -58,6 +58,8 @@ DISBGT  DC.B    'BGT  ',0
 DISBLE  DC.B    'BLE  ',0
 DISBGE  DC.B    'BGE  ',0
 DISBEQ  DC.B    'BEQ  ',0
+DISMOVE DC.B    'MOVE',0
+DISMOVEA DC.B   'MOVEA',0
 ******** SIZE PRINTS ********
 DISB    DC.B    '.B  ',0
 DISW    DC.B    '.W  ',0
@@ -488,7 +490,7 @@ DECODEBRANCHES:
         LSR.W   #7,D3 *0110 check probably in main method
         LSR.W   #5,D3
         CMPI.B  #%0110,D3
-        BNE     INVALIDOP *Or the next decoding branch
+        BNE     DECODE_MOVE *Or the next decoding branch
         *-----------------------------------------------------------------------------
         MOVE.W  D2,D3   *reinstate the full machine code
         LSR.W   #7,D3
@@ -728,24 +730,28 @@ PRINT_BEQ:
 ******** DECODE MOVE ********
 *****************************
 DECODE_MOVE:
+        * checking for MOVEM
         MOVE.W  D2,D3
         LSR.W   #7,D3
         LSR.W   #4,D3
         CMPI.W  #%01001,D3
         BEQ     DECODE_MOVEM
         
+        * checking for MOVEQ
         MOVE.W  D2,D3
         LSR.W   #7,D3
         LSR.W   #5,D3
         CMPI.W  #%0111,D3
         BEQ     DECODE_MOVEQ
         
+        * checking for not MOVE or MOVEA
         MOVE.W  D2,D3
         LSR.W   #7,D3
         LSR.W   #7,D3
         CMPI.B  #%00,D3
         BNE     INVALIDOP
         
+        * checking for invalid size
         MOVE.W  D2,D3
         LSR.W   #7,D3
         LSR.W   #5,D3
@@ -753,25 +759,183 @@ DECODE_MOVE:
         CMPI.B  #%00,D3
         BEQ     INVALIDOP
         
+        * checking for MOVEA
         MOVE.W  D2,D3
-        LSR.W   #7,D3
+        LSR.W   #6,D3
         ANDI.W  #$7,D3
         CMPI.W  #%001,D3
         BEQ     DECODE_MOVEA
         
+        *code goes there *MOVE!!!!!
+
+        JSR     GET_MOVE_SIZE *storing size in D5
+        *Print the PC
+        JSR     PRINT_PC
+        *Print out the label
+        LEA     DISMOVE,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        *Print the size
+        JSR     PRINT_MOVE_SIZE *note this is bugged
+        *todo: make your own printsize
         
+        *Get source
+        JSR     GET_MOVE_SOURCE
+        *storing source mode in D7
+        *storing source register in D6
+        
+        *figure out logic to print
+        *don't forget to deal with word addressing and long addressing
+        ** check the mode if 111 
+        *** if its effective addressing, check the register
+        *** if 000, it's word addr
+        *** 001 = long addressing
+        
+        *source Mode:
+        CMPI.W  #%000,D7
+        BEQ     PRINT_MOVE_SDN
+        CMPI.W  #%001,D7
+        BEQ     PRINT_MOVE_SAN
+        CMPI.W  #%010,D7
+        BEQ     PRINT_MOVE_SPAN
+        CMPI.W  #%011,D7
+        BEQ     PRINT_MOVE_SPANP
+        CMPI.W  #%100,D7
+        BEQ     PRINT_MOVE_SPANM
+        CMPI.W  #%111,D7
+        BEQ     DECODE_MOVE_SOURCE_EA
+        
+        BRA     INVALIDOP *REPLACE WITH INVALIDEA AFTER MERGE!
+        
+DECODE_MOVE_SOURCE_EA:
+        CMPI.W  #%000,D6
+        BEQ     PRINT_MOVE_SOURCE_EA_WORD
+        CMPI.W  #%001,D6
+        BEQ     PRINT_MOVE_SOURCE_EA_LONG
+        CMPI.W  #%100,D6
+        BEQ     PRINT_MOVE_SOURCE_EA_LONG
+        BRA     INVALIDOP *REPLACE WITH INVALIDEA AFTER MERGE!
+        
+PRINT_MOVE_SOURCE_EA_WORD:
+        JSR     GET_MOVE_DEST
+        CMP.W   #0,(A2)+
+        MOVE.W  (A2)+,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTCOMMA
+        BRA     DECODE_MOVE_DEST
+        
+PRINT_MOVE_SOURCE_EA_LONG:
+        JSR     GET_MOVE_DEST
+        CMP.W   #0,(A2)+
+        MOVE.L  (A2)+,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTCOMMA
+        BRA     DECODE_MOVE_DEST
+
+PRINT_MOVE_SOURCE_EA_IMMED:
+        JSR    GET_MOVE_DEST
+        *print the thing
+        
+        JSR     PRINTCOMMA
+        BRA     DECODE_MOVE_DEST   
+    
+DECODE_MOVE_DEST:
+        **get destination
+        *JSR     GET_MOVE_DEST
+        *storing destination register in D4
+        *storing destination mode in D5
+        CMPI.W  #%000,D5
+        BEQ     PRINT_MOVE_DDN
+        CMPI.W  #%010,D5
+        BEQ     PRINT_MOVE_DPAN
+        CMPI.W  #%011,D5
+        BEQ     PRINT_MOVE_DPANP
+        CMPI.W  #%100,D5
+        BEQ     PRINT_MOVE_DPANM
+        CMPI.W  #%111,D5
+        BEQ     DECODE_MOVE_DEST_EA
+        
+        BRA     INVALIDOP *REPLACE WITH INVALIDEA AFTER MERGE!
+
+DECODE_MOVE_DEST_EA:
+        CMPI.W  #%000,D4
+        BEQ     PRINT_MOVE_DEST_EA_WORD
+        CMPI.W  #%001,D4
+        BEQ     PRINT_MOVE_DEST_EA_LONG
+        BRA     INVALIDOP *REPLACE WITH INVALIDEA AFTER MERGE!
+        
+PRINT_MOVE_DEST_EA_WORD:
+        *print the thing
+        CMP.W   #0,(A2)+
+        MOVE.W  (A2)+,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        LEA     NEWLINE,A1 ; print a new line for reading purposes
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     MOVE_NEXT_LOOP
+PRINT_MOVE_DEST_EA_LONG:
+        *print the thing
+        CMP.W   #0,(A2)+
+        MOVE.L  (A2)+,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        LEA     NEWLINE,A1 ; print a new line for reading purposes
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     MOVE_NEXT_LOOP
+******* COMMON MOVE FUNCTIONS *******
+PRINT_MOVE_SIZE:
+        CMPI.B  #%01,D5
+        BEQ     PRINTB
+        CMPI.B  #%11,D5
+        BEQ     PRINTW
+        CMPI.B  #%10,D5
+        BEQ     PRINTL
+        BRA     INVALIDOP
+
+***********MOVEA SECTION******
+
 DECODE_MOVEA:
         JSR     GET_MOVE_SIZE
-        CMPI.B  #%01,D7
+        CMPI.B  #%01,D5
         BEQ     INVALIDOP *MOVEA does not support bytes
 
         MOVE.W  D2,D3
-        LSR.W   #7,D3
+        LSR.W   #6,D3
+        LSR.W   #3,D3
         ANDI.W  #$7,D3
-        CMPI.W  #%001,D3
-        MOVE.W  D3,D6 *getting destination register
+        *CMPI.W  #%001,D3
+        MOVE.W  D3,D4 *getting destination register
         
+        JSR     GET_MOVE_SIZE
+        *Print the PC
+        JSR     PRINT_PC
+        *Print out the label
+        LEA     DISMOVEA,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        *Print the size
+        SUB.B   #1,D5
+        JSR     PRINT_MOVE_SIZE
+        
+        *Get destination and source
+        *JSR     GET_MOVE_DEST
         JSR     GET_MOVE_SOURCE
+        
+        ******* remember, this is MOVEA! ******
+        
+        *source:
+        CMPI.W  #%000,D7
+        *write code after MOVE is done
+        
+        BRA     INVALIDOP *REPLACE WITH INVALIDEA AFTER MERGE!
         
 DECODE_MOVEQ:
         MOVE.W  D2,D3
@@ -783,7 +947,6 @@ DECODE_MOVEQ:
         MOVE.W  D2,D3
         
 DECODE_MOVEM:
-        BRA     INVALIDOP
         MOVE.W  D2,D3
         LSR.W   #7,D3
         ANDI.W  #%111,D3
@@ -796,8 +959,8 @@ GET_MOVE_SIZE:
         MOVE.W  D2,D3
         LSR.W   #7,D3
         LSR.W   #5,D3
-        ANDI.W  #%0011,D3
-        MOVE.B  D3,D7 *storing size in D7
+        ANDI.W  #%11,D3
+        MOVE.B  D3,D5 *storing size in D5
         RTS
 GET_MOVE_DEST:
         MOVE.W  D2,D3
@@ -814,11 +977,103 @@ GET_MOVE_SOURCE:
         MOVE.W  D2,D3
         LSR.W   #3,D3
         ANDI.W  #$7,D3
-        MOVE.W  D3,D5 *storing source mode in D5
+        MOVE.W  D3,D7 *storing source mode in D7
         MOVE.W  D2,D3
         ANDI.W  #$7,D3
-        MOVE.W  D3,D4 *storing source register in D4
+        MOVE.W  D3,D6 *storing source register in D6
         RTS
+MOVE_NEXT_LOOP:
+        JSR     CLEAR_ALL
+        MOVE.W  (A2)+,D2   ; increment the address
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+******** MOVE PRINTS ***********
+*SOURCE
+PRINT_MOVE_SDN:
+        MOVE.W  D6,D4 
+        JSR     PRINTDn
+        JSR     PRINTCOMMA
+        *get destination
+        JSR     GET_MOVE_DEST
+        BRA     DECODE_MOVE_DEST
+PRINT_MOVE_SAN:
+        MOVE.W  D6,D4 
+        JSR     PRINTAn
+        JSR     PRINTCOMMA
+        *get destination
+        JSR     GET_MOVE_DEST
+        BRA     DECODE_MOVE_DEST
+PRINT_MOVE_SPAN:
+        MOVE.W  D6,D4 
+        JSR     PRINTLEFTPAREN
+        JSR     PRINTAn
+        JSR     PRINTRIGHTPAREN
+        JSR     PRINTCOMMA
+        *get destination
+        JSR     GET_MOVE_DEST
+        BRA     DECODE_MOVE_DEST
+PRINT_MOVE_SPANP:
+        MOVE.W  D6,D4 
+        JSR     PRINTLEFTPAREN
+        JSR     PRINTAn
+        JSR     PRINTRIGHTPAREN
+        JSR     PRINTPLUS
+        JSR     PRINTCOMMA
+        *get destination
+        JSR     GET_MOVE_DEST
+        BRA     DECODE_MOVE_DEST
+PRINT_MOVE_SPANM:
+        MOVE.W  D6,D4 
+        JSR     PRINTMINUS
+        JSR     PRINTLEFTPAREN
+        JSR     PRINTAn
+        JSR     PRINTRIGHTPAREN
+        JSR     PRINTCOMMA
+        *get destination
+        JSR     GET_MOVE_DEST
+        BRA     DECODE_MOVE_DEST
+
+*DESTINATION
+PRINT_MOVE_DDN: 
+        JSR     PRINTDn
+        LEA     NEWLINE,A1 ; print a new line for reading purposes
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     MOVE_NEXT_LOOP
+PRINT_MOVE_DAN:
+        JSR     PRINTAn
+        LEA     NEWLINE,A1 ; print a new line for reading purposes
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     MOVE_NEXT_LOOP
+PRINT_MOVE_DPAN:
+        JSR     PRINTLEFTPAREN
+        JSR     PRINTAn
+        JSR     PRINTRIGHTPAREN
+        LEA     NEWLINE,A1 ; print a new line for reading purposes
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     MOVE_NEXT_LOOP
+PRINT_MOVE_DPANP:
+        JSR     PRINTLEFTPAREN
+        JSR     PRINTAn
+        JSR     PRINTRIGHTPAREN
+        JSR     PRINTPLUS
+        LEA     NEWLINE,A1 ; print a new line for reading purposes
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     MOVE_NEXT_LOOP
+PRINT_MOVE_DPANM:
+        JSR     PRINTMINUS
+        JSR     PRINTLEFTPAREN
+        JSR     PRINTAn
+        JSR     PRINTRIGHTPAREN
+        LEA     NEWLINE,A1 ; print a new line for reading purposes
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     MOVE_NEXT_LOOP
+
 ******** INVALID OUTPUT ********
 * THIS SHOULD ALWAYS BE THE LAST DECODE BRANCH
 * THAT WAY AFTER ATTEMPTING ALL ADDRESSING MODE AND FAILING
@@ -2311,6 +2566,8 @@ WAIT:
 RETURN:
         RTS
 PRINT_PC:
+        MOVE.W  #0,TEMP_CURR_OP
+        ADD.W  D2,TEMP_CURR_OP
         MOVE.L  PC_COUNT,D1
         MOVE.B  #16,D2
         MOVE.B  #15,D0
@@ -2319,6 +2576,7 @@ PRINT_PC:
         LEA     DISTAB,A1
         MOVE.B  #14,D0
         TRAP    #15
+        MOVE.W  TEMP_CURR_OP,D2
 
         RTS
 CLEAR_ALL:
@@ -2339,6 +2597,7 @@ DONE:
         CLR.L   D3
         CLR.L   D7
         END    START        ; last line of source
+
 
 
 
