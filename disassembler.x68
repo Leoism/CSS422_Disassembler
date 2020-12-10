@@ -19,6 +19,7 @@ MOVEM_SIZE_VAR DC.B 1
 MOVEM_DR_VAR   DC.B 1 
 MOVEM_REG_LIST DC.W 1
 MOVEM_PRINT_COUNT DC.B 1
+MOVEM_IS_FIRST DC.B 1
 ******** USER INPUT/OUTPUT/INTERACTIONS ********
 ASKST   DC.B    'Please enter starting address in hex:',0
 ASKEN   DC.B    CR,LF,'Please enter ending address in hex:',0
@@ -799,7 +800,7 @@ DECODE_MOVEM:
         CMPI.W  #%001,D3
         BNE     INVALIDOP
         MOVE.W  D2,D3
-        JSR     GET_MOVE_SOURCE
+        JSR     GET_MOVEM_SOURCE
         JSR     GET_MOVEM_SIZE
         JSR     GET_MOVEM_DR
         JSR     GET_MOVEM_REG_LIST
@@ -838,6 +839,32 @@ DETERMINE_MOVEM_MEM2REG:
         BEQ     PRINT_MOVEM_MEM2REG_IN
         JSR     INVALIDEA
         JSR     SKIPTONEXTOP
+GET_MOVEM_SOURCE:
+        MOVE.W  D2,D3
+        LSR.W   #3,D3
+        ANDI.W  #$7,D3
+        MOVE.W  D3,D5 *storing source mode in D5
+        MOVE.W  D2,D3
+        ANDI.W  #$7,D3
+        MOVE.W  D3,D4 *storing source register in D4
+        RTS
+GET_MOVEM_SIZE:
+        MOVE.W  D2,D3
+        LSR.W   #6,D3
+        ANDI.W  #%1,D3
+        MOVE.B  D3, MOVEM_SIZE_VAR
+        RTS
+GET_MOVEM_DR:
+        MOVE.W  D2,D3
+        LSR.W   #7,D3
+        LSR.W   #3,D3
+        ANDI.W  #%1,D3
+        MOVE.B  D3,MOVEM_DR_VAR
+        RTS
+GET_MOVEM_REG_LIST:
+        CMPI.W  #0,(A2)+
+        MOVE.W  (A2),MOVEM_REG_LIST
+        RTS
 ****** MOVE FUNCTIONS *******
 GET_MOVE_SIZE:
         MOVE.W  D2,D3
@@ -865,24 +892,6 @@ GET_MOVE_SOURCE:
         MOVE.W  D2,D3
         ANDI.W  #$7,D3
         MOVE.W  D3,D4 *storing source register in D4
-        RTS
-
-GET_MOVEM_SIZE:
-        MOVE.W  D2,D3
-        LSR.W   #6,D3
-        ANDI.W  #%1,D3
-        MOVE.B  D3, MOVEM_SIZE_VAR
-        RTS
-GET_MOVEM_DR:
-        MOVE.W  D2,D3
-        LSR.W   #7,D3
-        LSR.W   #3,D3
-        ANDI.W  #%1,D3
-        MOVE.B  D3,MOVEM_DR_VAR
-        RTS
-GET_MOVEM_REG_LIST:
-        CMPI.W  #0,(A2)+
-        MOVE.W  (A2),MOVEM_REG_LIST
         RTS
 ******** INVALID OUTPUT ********
 * THIS SHOULD ALWAYS BE THE LAST DECODE BRANCH
@@ -2057,6 +2066,7 @@ PRINT_MOVEM_REG2MEM_EA:
         JSR     PRINT_MOVEM_SIZE
         MOVE.W  MOVEM_REG_LIST,D5
         MOVE.B  #0,MOVEM_PRINT_COUNT
+        MOVE.B  #0,MOVEM_IS_FIRST
         JSR     PRINT_MOVEM_REG_LIST_UP
         JSR     PRINTCOMMA
         JSR     PRINTDOLLAR
@@ -2079,6 +2089,7 @@ PRINT_MOVEM_REG2MEM_IN:
         JSR     PRINT_MOVEM_SIZE
         MOVE.W  MOVEM_REG_LIST,D5
         MOVE.B  #0,MOVEM_PRINT_COUNT
+        MOVE.B  #0,MOVEM_IS_FIRST
         JSR     PRINT_MOVEM_REG_LIST_UP
         JSR     PRINTCOMMA
         JSR     PRINT_ADDA_INDIRECT_TYPE
@@ -2091,6 +2102,7 @@ PRINT_MOVEM_REG2MEM_PRE:
         JSR     PRINT_MOVEM_SIZE
         MOVE.W  MOVEM_REG_LIST,D5
         MOVE.B  #0,MOVEM_PRINT_COUNT
+        MOVE.B  #0,MOVEM_IS_FIRST
         JSR     PRINT_MOVEM_REG_LIST_DOWN
         JSR     PRINTCOMMA
         JSR     PRINT_ADDA_INDIRECT_TYPE
@@ -2105,6 +2117,7 @@ PRINT_MOVEM_MEM2REG_IN:
         JSR     PRINTCOMMA
         MOVE.W  MOVEM_REG_LIST,D5
         MOVE.B  #0,MOVEM_PRINT_COUNT
+        MOVE.B  #0,MOVEM_IS_FIRST
         JSR     PRINT_MOVEM_REG_LIST_UP
         JSR     PRINTNEWLINE
         JSR     SKIPTONEXTOP
@@ -2124,6 +2137,7 @@ PRINT_MOVEM_MEM2REG_EA:
         JSR     PRINTCOMMA
 
         MOVE.W  MOVEM_REG_LIST,D5
+        MOVE.B  #0,MOVEM_IS_FIRST
         MOVE.B  #0,MOVEM_PRINT_COUNT
         JSR     PRINT_MOVEM_REG_LIST_UP
 
@@ -2154,6 +2168,9 @@ PRINT_MOVEM_REG_LIST_UP:
         BRA     PRINT_MOVEM_REG_LIST_UP
 CHECK_IF_ON:
         BEQ     RETURN
+        CMPI.B  #0,MOVEM_IS_FIRST
+        JSR     SHOULD_PRINT_SLASH_OR_NO
+        MOVE.B  #1,MOVEM_IS_FIRST
         CLR.L   D1
         CMPI.B  #7,MOVEM_PRINT_COUNT
         BGT     IS_A
@@ -2168,7 +2185,6 @@ IS_A:
 CONT_IF_ON:
         MOVE.B  #3,D0
         TRAP    #15
-        JSR     PRINTSLASH
         RTS
 ** For printing reg list in reverse
 PRINT_MOVEM_REG_LIST_DOWN:
@@ -2181,6 +2197,9 @@ PRINT_MOVEM_REG_LIST_DOWN:
         BRA     PRINT_MOVEM_REG_LIST_DOWN
 CHECK_IF_ON_DOWN:
         BEQ     RETURN
+        CMPI.B  #0,MOVEM_IS_FIRST
+        JSR     SHOULD_PRINT_SLASH_OR_NO
+        MOVE.B  #1,MOVEM_IS_FIRST
         CLR.L   D1
         CMPI.B  #7,MOVEM_PRINT_COUNT
         BGT     IS_D_DOWN
@@ -2197,7 +2216,9 @@ IS_D_DOWN:
 CONT_IF_ON_DOWN:
         MOVE.B  #3,D0
         TRAP    #15
-        JSR     PRINTSLASH
+        RTS
+SHOULD_PRINT_SLASH_OR_NO:
+        BNE     PRINTSLASH
         RTS
 ******** ADDQ FUNCTIONS ********
 PRINT_ADDQ_DATA:
