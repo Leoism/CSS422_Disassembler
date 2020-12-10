@@ -14,7 +14,7 @@ ENADR   DS.L    1        ; allocate for end address
 LOOPCOUNT DS.L  1       ; keep track of loop
 PC_COUNT  DC.L  1       ; keep track of pc
 IS_IN_MEM_BOOL DC.B  1
-
+TEMP_CURR_OP DC.W 1
 ******** USER INPUT/OUTPUT/INTERACTIONS ********
 ASKST   DC.B    'Please enter starting address in hex:',0
 ASKEN   DC.B    CR,LF,'Please enter ending address in hex:',0
@@ -58,6 +58,8 @@ DISBGT  DC.B    'BGT  ',0
 DISBLE  DC.B    'BLE  ',0
 DISBGE  DC.B    'BGE  ',0
 DISBEQ  DC.B    'BEQ  ',0
+DISMOVE DC.B    'MOVE',0
+DISMOVEA DC.B   'MOVEA',0
 ******** SIZE PRINTS ********
 DISB    DC.B    '.B  ',0
 DISW    DC.B    '.W  ',0
@@ -488,7 +490,7 @@ DECODEBRANCHES:
         LSR.W   #7,D3 *0110 check probably in main method
         LSR.W   #5,D3
         CMPI.B  #%0110,D3
-        BNE     INVALIDOP *Or the next decoding branch
+        BNE     DECODE_MOVE *Or the next decoding branch
         *-----------------------------------------------------------------------------
         MOVE.W  D2,D3   *reinstate the full machine code
         LSR.W   #7,D3
@@ -768,14 +770,13 @@ DECODE_MOVE:
 
         JSR     GET_MOVE_SIZE *storing size in D5
         *Print the PC
-        
+        JSR     PRINT_PC
         *Print out the label
         LEA     DISMOVE,A1
         MOVE.B  #14,D0
         TRAP    #15
         *Print the size
-        SUB.B   #1,D5 *trying to get PRINTSIZEOP to work
-        JSR     PRINTSIZEOP *note this is bugged
+        JSR     PRINT_MOVE_SIZE *note this is bugged
         *todo: make your own printsize
         
         *Get source
@@ -889,6 +890,15 @@ PRINT_MOVE_DEST_EA_LONG:
         MOVE.B  #14,D0
         TRAP    #15
         BRA     MOVE_NEXT_LOOP
+******* COMMON MOVE FUNCTIONS *******
+PRINT_MOVE_SIZE:
+        CMPI.B  #%01,D5
+        BEQ     PRINTB
+        CMPI.B  #%11,D5
+        BEQ     PRINTW
+        CMPI.B  #%10,D5
+        BEQ     PRINTL
+        BRA     INVALIDOP
 
 ***********MOVEA SECTION******
 
@@ -906,14 +916,14 @@ DECODE_MOVEA:
         
         JSR     GET_MOVE_SIZE
         *Print the PC
-        
+        JSR     PRINT_PC
         *Print out the label
         LEA     DISMOVEA,A1
         MOVE.B  #14,D0
         TRAP    #15
         *Print the size
         SUB.B   #1,D5
-        JSR     PRINTSIZEOP
+        JSR     PRINT_MOVE_SIZE
         
         *Get destination and source
         *JSR     GET_MOVE_DEST
@@ -949,7 +959,7 @@ GET_MOVE_SIZE:
         MOVE.W  D2,D3
         LSR.W   #7,D3
         LSR.W   #5,D3
-        ANDI.W  #%0011,D3
+        ANDI.W  #%11,D3
         MOVE.B  D3,D5 *storing size in D5
         RTS
 GET_MOVE_DEST:
@@ -2556,6 +2566,8 @@ WAIT:
 RETURN:
         RTS
 PRINT_PC:
+        MOVE.W  #0,TEMP_CURR_OP
+        ADD.W  D2,TEMP_CURR_OP
         MOVE.L  PC_COUNT,D1
         MOVE.B  #16,D2
         MOVE.B  #15,D0
@@ -2564,6 +2576,7 @@ PRINT_PC:
         LEA     DISTAB,A1
         MOVE.B  #14,D0
         TRAP    #15
+        MOVE.W  TEMP_CURR_OP,D2
 
         RTS
 CLEAR_ALL:
