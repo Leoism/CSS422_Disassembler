@@ -1601,6 +1601,8 @@ DETERMINE_ADDR_MODE:
         BEQ     WORD_ADDR
         CMP.B   #1,D7
         BEQ     LONG_ADDR
+        CMP.B   #4,D7
+        BEQ     IMD_ADDR
         BRA     INVALIDOP
 WORD_ADDR:
         * Increment PC Counter
@@ -1612,6 +1614,14 @@ LONG_ADDR:
         CMP.W   #0,(A2)+   ; instructions are word size
         MOVE.L  (A2)+,D6    ; D6 will contain the address
         RTS
+        
+IMD_ADDR:
+        CMPI.B  #$0,D5
+        BEQ     WORD_ADDR
+        CMPI.B  #$1,D5
+        BEQ     WORD_ADDR
+        CMPI.B  #$2,D5
+        BEQ     LONG_ADDR
 ************************************        
 ******** PRINT INSTRUCTIONS ********
 ************************************
@@ -2120,6 +2130,7 @@ DOLLAR_OR_HASHTAG:
         
 HASHTAG:
         JSR     PRINTPOUND
+        JSR     PRINTDOLLAR
         RTS
         
 DOLLAR:
@@ -3070,6 +3081,7 @@ DONE:
         CLR.L   D3
         CLR.L   D7
         END    START        ; last line of source
+
 
 
 
