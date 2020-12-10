@@ -248,6 +248,8 @@ DECODELOGIC_CODE:
         BTST.L  #8,D3
         BNE     DECODELEA_MEM   ; if the opcode starts with 0100 and the 8th binary is 1, then it is a LEA opcode
 CHECK_IS_MOVEM_OR_JSR:
+        BTST.L  #8,D3
+        BNE     DECODELEA_MEM
         BTST.L  #9,D3
         BEQ     DECODE_MOVEM
         BNE     DECODEJSR_REG
@@ -816,7 +818,10 @@ DECODE_MOVE:
         CMPI.W  #%111,D7
         BEQ     DECODE_MOVE_SOURCE_EA
         
-        BRA     INVALIDOP *REPLACE WITH INVALIDEA AFTER MERGE!
+        *BRA     INVALIDOP *REPLACE WITH INVALIDEA AFTER MERGE!
+        JSR     INVALIDEA
+        JSR     GET_MOVE_DEST
+        BRA     DECODE_MOVE_DEST
         
 DECODE_MOVE_SOURCE_EA:
         CMPI.W  #%000,D6
@@ -824,8 +829,10 @@ DECODE_MOVE_SOURCE_EA:
         CMPI.W  #%001,D6
         BEQ     PRINT_MOVE_SOURCE_EA_LONG
         CMPI.W  #%100,D6
-        BEQ     PRINT_MOVE_SOURCE_EA_LONG
-        BRA     INVALIDOP *REPLACE WITH INVALIDEA AFTER MERGE!
+        BEQ     PRINT_MOVE_SOURCE_EA_IMMED
+        JSR     INVALIDEA
+        JSR     GET_MOVE_DEST
+        BRA     DECODE_MOVE_DEST
         
 PRINT_MOVE_SOURCE_EA_WORD:
         JSR     GET_MOVE_DEST
@@ -850,10 +857,50 @@ PRINT_MOVE_SOURCE_EA_LONG:
 PRINT_MOVE_SOURCE_EA_IMMED:
         JSR    GET_MOVE_DEST
         *print the thing
-        
-        JSR     PRINTCOMMA
+        CMPI.B  #%01,D5
+        BEQ     PRINT_MOVE_SOURCE_EA_IMMEDB
+        CMPI.B  #%11,D5
+        BEQ     PRINT_MOVE_SOURCE_EA_IMMEDW
+        CMPI.B  #%10,D5
+        BEQ     PRINT_MOVE_SOURCE_EA_IMMEDL
+        JSR     INVALIDEA
+        JSR     GET_MOVE_DEST
         BRA     DECODE_MOVE_DEST   
-    
+
+PRINT_MOVE_SOURCE_EA_IMMEDB:
+        JSR  PRINTPOUND
+        JSR  PRINTDOLLAR
+        CMP.W   #0,(A2)+
+        MOVE.W  (A2)+,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTCOMMA
+        JSR     GET_MOVE_DEST
+        BRA     DECODE_MOVE_DEST
+PRINT_MOVE_SOURCE_EA_IMMEDW:
+        JSR  PRINTPOUND
+        JSR  PRINTDOLLAR
+        CMP.W   #0,(A2)+
+        MOVE.W  (A2)+,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTCOMMA
+        JSR     GET_MOVE_DEST
+        BRA     DECODE_MOVE_DEST  
+PRINT_MOVE_SOURCE_EA_IMMEDL:
+        JSR  PRINTPOUND
+        JSR  PRINTDOLLAR
+        CMP.W   #0,(A2)+
+        MOVE.L  (A2)+,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTCOMMA
+        JSR     GET_MOVE_DEST
+        BRA     DECODE_MOVE_DEST
+ 
 DECODE_MOVE_DEST:
         **get destination
         *JSR     GET_MOVE_DEST
@@ -870,14 +917,16 @@ DECODE_MOVE_DEST:
         CMPI.W  #%111,D5
         BEQ     DECODE_MOVE_DEST_EA
         
-        BRA     INVALIDOP *REPLACE WITH INVALIDEA AFTER MERGE!
+        JSR     INVALIDEA
+        BRA     MOVE_NEXT_LOOP
 
 DECODE_MOVE_DEST_EA:
         CMPI.W  #%000,D4
         BEQ     PRINT_MOVE_DEST_EA_WORD
         CMPI.W  #%001,D4
         BEQ     PRINT_MOVE_DEST_EA_LONG
-        BRA     INVALIDOP *REPLACE WITH INVALIDEA AFTER MERGE!
+        JSR     INVALIDEA
+        BRA     MOVE_NEXT_LOOP
         
 PRINT_MOVE_DEST_EA_WORD:
         *print the thing
@@ -924,6 +973,7 @@ DECODE_MOVEA:
         ANDI.W  #$7,D3
         *CMPI.W  #%001,D3
         MOVE.W  D3,D4 *getting destination register
+        MOVE.W  D2,D3
         
         JSR     GET_MOVE_SIZE
         *Print the PC
@@ -933,7 +983,6 @@ DECODE_MOVEA:
         MOVE.B  #14,D0
         TRAP    #15
         *Print the size
-        SUB.B   #1,D5
         JSR     PRINT_MOVE_SIZE
         
         *Get destination and source
@@ -944,9 +993,106 @@ DECODE_MOVEA:
         
         *source:
         CMPI.W  #%000,D7
-        *write code after MOVE is done
+        BEQ     PRINT_MOVEA_SDN
+        CMPI.W  #%001,D7
+        BEQ     PRINT_MOVEA_SAN
+        CMPI.W  #%010,D7
+        BEQ     PRINT_MOVEA_SPAN
+        CMPI.W  #%011,D7
+        BEQ     PRINT_MOVEA_SPANP
+        CMPI.W  #%100,D7
+        BEQ     PRINT_MOVEA_SPANM
+        CMPI.W  #%111,D7
+        BEQ     DECODE_MOVEA_SOURCE_EA
         
-        BRA     INVALIDOP *REPLACE WITH INVALIDEA AFTER MERGE!
+        JSR     INVALIDEA
+        JSR     PRINTAn
+        LEA     NEWLINE,A1 ; print a new line for reading purposes
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     MOVE_NEXT_LOOP
+
+DECODE_MOVEA_SOURCE_EA:
+        CMPI.W  #%000,D6
+        BEQ     PRINT_MOVEA_SOURCE_EA_WORD
+        CMPI.W  #%001,D6
+        BEQ     PRINT_MOVEA_SOURCE_EA_LONG
+        CMPI.W  #%100,D6
+        BEQ     PRINT_MOVEA_SOURCE_EA_IMMED
+        JSR     INVALIDEA
+        JSR     PRINTAn
+        LEA     NEWLINE,A1 ; print a new line for reading purposes
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     MOVE_NEXT_LOOP
+        
+PRINT_MOVEA_SOURCE_EA_WORD:
+        CMP.W   #0,(A2)+
+        MOVE.W  (A2)+,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTCOMMA
+        JSR     PRINTAn
+        LEA     NEWLINE,A1 ; print a new line for reading purposes
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     MOVE_NEXT_LOOP
+        
+PRINT_MOVEA_SOURCE_EA_LONG:
+        CMP.W   #0,(A2)+
+        MOVE.L  (A2)+,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTCOMMA
+        JSR     PRINTAn
+        LEA     NEWLINE,A1 ; print a new line for reading purposes
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     MOVE_NEXT_LOOP
+
+PRINT_MOVEA_SOURCE_EA_IMMED:
+        *print the thing
+        CMPI.B  #%11,D5
+        BEQ     PRINT_MOVEA_SOURCE_EA_IMMEDW
+        CMPI.B  #%10,D5
+        BEQ     PRINT_MOVEA_SOURCE_EA_IMMEDL
+        JSR     INVALIDEA
+        JSR     PRINTCOMMA
+        JSR     PRINTAn
+        LEA     NEWLINE,A1 ; print a new line for reading purposes
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     MOVE_NEXT_LOOP
+PRINT_MOVEa_SOURCE_EA_IMMEDW:
+        JSR  PRINTPOUND
+        JSR  PRINTDOLLAR
+        CMP.W   #0,(A2)+
+        MOVE.W  (A2)+,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTCOMMA
+        JSR     PRINTAn
+        LEA     NEWLINE,A1 ; print a new line for reading purposes
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     MOVE_NEXT_LOOP 
+PRINT_MOVEa_SOURCE_EA_IMMEDL:
+        JSR  PRINTPOUND
+        JSR  PRINTDOLLAR
+        CMP.W   #0,(A2)+
+        MOVE.L  (A2)+,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTCOMMA
+        JSR     PRINTAn
+        LEA     NEWLINE,A1 ; print a new line for reading purposes
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     MOVE_NEXT_LOOP 
         
 DECODE_MOVEQ:
         MOVE.W  D2,D3
@@ -1150,6 +1296,62 @@ PRINT_MOVE_DPANM:
         MOVE.B  #14,D0
         TRAP    #15
         BRA     MOVE_NEXT_LOOP
+
+********* MOVEA prints *********
+PRINT_MOVEA_SDN:
+        MOVE.W  D6,D4 
+        JSR     PRINTDn
+        JSR     PRINTCOMMA
+        JSR     PRINTAn
+        LEA     NEWLINE,A1 ; print a new line for reading purposes
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     MOVE_NEXT_LOOP
+PRINT_MOVEA_SAN:
+        MOVE.W  D6,D4 
+        JSR     PRINTAn
+        JSR     PRINTCOMMA
+        JSR     PRINTAn
+        LEA     NEWLINE,A1 ; print a new line for reading purposes
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     MOVE_NEXT_LOOP
+PRINT_MOVEA_SPAN:
+        MOVE.W  D6,D4 
+        JSR     PRINTLEFTPAREN
+        JSR     PRINTAn
+        JSR     PRINTRIGHTPAREN
+        JSR     PRINTCOMMA
+        JSR     PRINTAn
+        LEA     NEWLINE,A1 ; print a new line for reading purposes
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     MOVE_NEXT_LOOP
+PRINT_MOVEA_SPANP:
+        MOVE.W  D6,D4 
+        JSR     PRINTLEFTPAREN
+        JSR     PRINTAn
+        JSR     PRINTRIGHTPAREN
+        JSR     PRINTPLUS
+        JSR     PRINTCOMMA
+        JSR     PRINTAn
+        LEA     NEWLINE,A1 ; print a new line for reading purposes
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     MOVE_NEXT_LOOP
+PRINT_MOVEA_SPANM:
+        MOVE.W  D6,D4 
+        JSR     PRINTMINUS
+        JSR     PRINTLEFTPAREN
+        JSR     PRINTAn
+        JSR     PRINTRIGHTPAREN
+        JSR     PRINTCOMMA
+        JSR     PRINTAn
+        LEA     NEWLINE,A1 ; print a new line for reading purposes
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     MOVE_NEXT_LOOP
+
 
 ******** INVALID OUTPUT ********
 * THIS SHOULD ALWAYS BE THE LAST DECODE BRANCH
@@ -2868,6 +3070,7 @@ DONE:
         CLR.L   D3
         CLR.L   D7
         END    START        ; last line of source
+
 
 
 
