@@ -14,6 +14,13 @@ ENADR   DS.L    1        ; allocate for end address
 LOOPCOUNT DS.L  1       ; keep track of loop
 PC_COUNT  DC.L  1       ; keep track of pc
 IS_IN_MEM_BOOL DC.B  1
+******** MOVEM VARS *********
+MOVEM_SIZE_VAR DC.B 1
+MOVEM_DR_VAR   DC.B 1 
+MOVEM_REG_LIST DC.W 1
+MOVEM_PRINT_COUNT DC.B 1
+MOVEM_IS_FIRST DC.B 1
+******* PC PRINTING ********
 TEMP_CURR_OP DC.W 1
 ******** USER INPUT/OUTPUT/INTERACTIONS ********
 ASKST   DC.B    'Please enter starting address in hex:',0
@@ -34,6 +41,7 @@ DISPARENR DC.B   ')',0
 DISPLUS DC.B    '+',0
 DISMIN  DC.B    '-',0
 DISTAB DC.B     '  ',0
+DISSLASH DC.B   '/',0
 ******** INSTRUCTION PRINTS ********
 DISNOP  DC.B    'NOP',0
 DISRTS  DC.B    'RTS',0
@@ -58,6 +66,8 @@ DISBGT  DC.B    'BGT  ',0
 DISBLE  DC.B    'BLE  ',0
 DISBGE  DC.B    'BGE  ',0
 DISBEQ  DC.B    'BEQ  ',0
+DISMOVEM DC.B   'MOVEM',0
+DISMOVEQ DC.B   'MOVEQ',0
 DISMOVE DC.B    'MOVE',0
 DISMOVEA DC.B   'MOVEA',0
 ******** SIZE PRINTS ********
@@ -82,7 +92,8 @@ DISA4   DC.B    'A4',0
 DISA5   DC.B    'A5',0
 DISA6   DC.B    'A6',0
 DISA7   DC.B    'A7',0
-
+DISD    DC.B    'D',0
+DISA    DC.B    'A',0
 ******** INVALID DATA ********
 DISDATA DC.B    '  DATA  ',0
         ORG     $1000     ; start at 1000
@@ -945,7 +956,9 @@ DECODE_MOVEQ:
         CMPI.B  #%0,D3
         BNE     INVALIDOP
         MOVE.W  D2,D3
-        
+        JSR     GET_MOVEQ_DATA
+        JSR     GET_MOVEQ_REG
+        BRA     PRINT_MOVEQ
 DECODE_MOVEM:
         MOVE.W  D2,D3
         LSR.W   #7,D3
@@ -953,8 +966,72 @@ DECODE_MOVEM:
         CMPI.W  #%001,D3
         BNE     INVALIDOP
         MOVE.W  D2,D3
-        
-*******MOVE FUNCTIONS*******
+        JSR     GET_MOVEM_SOURCE
+        JSR     GET_MOVEM_SIZE
+        JSR     GET_MOVEM_DR
+        JSR     GET_MOVEM_REG_LIST
+        CMPI.B  #%0,MOVEM_DR_VAR
+        BEQ     DETERMINE_MOVEM_REG2MEM
+        BRA     DETERMINE_MOVEM_MEM2REG
+******* MOVEQ FUNCTIONS ********
+GET_MOVEQ_DATA:
+        MOVE.W  D2,D3
+        ANDI.W  #$FF,D3
+        MOVE.W  D3,D7
+        RTS
+GET_MOVEQ_REG:
+        MOVE.W  D2,D3
+        LSR.W   #7,D3
+        LSR.W   #2,D3
+        ANDI.W  #$7,D3
+        MOVE.W  D3,D4
+        RTS
+******* MOVEM FUNCTIONS *******
+DETERMINE_MOVEM_REG2MEM:
+        CMPI.W  #%111,D5
+        BEQ     PRINT_MOVEM_REG2MEM_EA
+        CMPI.W  #%010,D5
+        BEQ     PRINT_MOVEM_REG2MEM_IN
+        CMPI.W  #%100,D5 
+        BEQ     PRINT_MOVEM_REG2MEM_PRE
+        JSR     INVALIDEA
+        JSR     SKIPTONEXTOP
+DETERMINE_MOVEM_MEM2REG:
+        CMPI.W  #%111,D5
+        BEQ     PRINT_MOVEM_MEM2REG_EA
+        CMPI.W  #%010,D5
+        BEQ     PRINT_MOVEM_MEM2REG_IN
+        CMPI.W  #%011,D5
+        BEQ     PRINT_MOVEM_MEM2REG_IN
+        JSR     INVALIDEA
+        JSR     SKIPTONEXTOP
+GET_MOVEM_SOURCE:
+        MOVE.W  D2,D3
+        LSR.W   #3,D3
+        ANDI.W  #$7,D3
+        MOVE.W  D3,D5 *storing source mode in D5
+        MOVE.W  D2,D3
+        ANDI.W  #$7,D3
+        MOVE.W  D3,D4 *storing source register in D4
+        RTS
+GET_MOVEM_SIZE:
+        MOVE.W  D2,D3
+        LSR.W   #6,D3
+        ANDI.W  #%1,D3
+        MOVE.B  D3, MOVEM_SIZE_VAR
+        RTS
+GET_MOVEM_DR:
+        MOVE.W  D2,D3
+        LSR.W   #7,D3
+        LSR.W   #3,D3
+        ANDI.W  #%1,D3
+        MOVE.B  D3,MOVEM_DR_VAR
+        RTS
+GET_MOVEM_REG_LIST:
+        CMPI.W  #0,(A2)+
+        MOVE.W  (A2),MOVEM_REG_LIST
+        RTS
+****** MOVE FUNCTIONS *******
 GET_MOVE_SIZE:
         MOVE.W  D2,D3
         LSR.W   #7,D3
@@ -2220,6 +2297,187 @@ PRINT_SUB_EA:
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
         BRA     DONE
+******** MOVEQ FUNCTIONS ********
+PRINT_MOVEQ:
+        JSR     PRINT_PC
+        LEA     DISMOVEQ,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        JSR     PRINTL
+
+        JSR     PRINTPOUND
+        JSR     PRINTDOLLAR
+        MOVE.B  D7,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+        JSR     PRINTCOMMA
+        JSR     PRINTDn
+        JSR     PRINTNEWLINE
+        JSR     SKIPTONEXTOP
+*********** MOVEM PRINTING ***********
+PRINT_MOVEM_REG2MEM_EA:
+        MOVE.W  D4,D7
+        JSR     DETERMINE_ADDR_MODE
+        JSR     PRINT_PC
+        JSR     PRINT_MOVEM_LABEL
+        JSR     PRINT_MOVEM_SIZE
+        MOVE.W  MOVEM_REG_LIST,D5
+        MOVE.B  #0,MOVEM_PRINT_COUNT
+        MOVE.B  #0,MOVEM_IS_FIRST
+        JSR     PRINT_MOVEM_REG_LIST_UP
+        JSR     PRINTCOMMA
+        JSR     PRINTDOLLAR
+
+        MOVE.L  D6,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+
+        JSR     PRINTNEWLINE
+
+        MOVE.W  (A2),D2
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+PRINT_MOVEM_REG2MEM_IN:
+        MOVE.W  D5,D7
+        JSR     PRINT_PC
+        JSR     PRINT_MOVEM_LABEL
+        JSR     PRINT_MOVEM_SIZE
+        MOVE.W  MOVEM_REG_LIST,D5
+        MOVE.B  #0,MOVEM_PRINT_COUNT
+        MOVE.B  #0,MOVEM_IS_FIRST
+        JSR     PRINT_MOVEM_REG_LIST_UP
+        JSR     PRINTCOMMA
+        JSR     PRINT_ADDA_INDIRECT_TYPE
+        JSR     PRINTNEWLINE
+        JSR     SKIPTONEXTOP
+PRINT_MOVEM_REG2MEM_PRE:
+        MOVE.W  D5,D7
+        JSR     PRINT_PC
+        JSR     PRINT_MOVEM_LABEL
+        JSR     PRINT_MOVEM_SIZE
+        MOVE.W  MOVEM_REG_LIST,D5
+        MOVE.B  #0,MOVEM_PRINT_COUNT
+        MOVE.B  #0,MOVEM_IS_FIRST
+        JSR     PRINT_MOVEM_REG_LIST_DOWN
+        JSR     PRINTCOMMA
+        JSR     PRINT_ADDA_INDIRECT_TYPE
+        JSR     PRINTNEWLINE
+        JSR     SKIPTONEXTOP
+PRINT_MOVEM_MEM2REG_IN:
+        MOVE.W  D5,D7
+        JSR     PRINT_PC
+        JSR     PRINT_MOVEM_LABEL
+        JSR     PRINT_MOVEM_SIZE
+        JSR     PRINT_ADDA_INDIRECT_TYPE
+        JSR     PRINTCOMMA
+        MOVE.W  MOVEM_REG_LIST,D5
+        MOVE.B  #0,MOVEM_PRINT_COUNT
+        MOVE.B  #0,MOVEM_IS_FIRST
+        JSR     PRINT_MOVEM_REG_LIST_UP
+        JSR     PRINTNEWLINE
+        JSR     SKIPTONEXTOP
+PRINT_MOVEM_MEM2REG_EA:
+        MOVE.W  D4,D7
+        JSR     DETERMINE_ADDR_MODE
+        JSR     PRINT_PC
+        JSR     PRINT_MOVEM_LABEL
+        JSR     PRINT_MOVEM_SIZE
+
+        JSR     PRINTDOLLAR
+        MOVE.L  D6,D1
+        MOVE.B  #16,D2
+        MOVE.B  #15,D0
+        TRAP    #15
+
+        JSR     PRINTCOMMA
+
+        MOVE.W  MOVEM_REG_LIST,D5
+        MOVE.B  #0,MOVEM_IS_FIRST
+        MOVE.B  #0,MOVEM_PRINT_COUNT
+        JSR     PRINT_MOVEM_REG_LIST_UP
+
+        JSR     PRINTNEWLINE
+
+        MOVE.W  (A2),D2
+        CMP.L   ENADR,A2   ; keep looping until reach the end
+        BLT     LOOPMEM
+        BRA     DONE
+********** MOVEM FUNCTIONS *********
+PRINT_MOVEM_LABEL:
+        LEA     DISMOVEM,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        RTS
+PRINT_MOVEM_SIZE:
+        CMPI.B  #1,MOVEM_SIZE_VAR
+        BEQ     PRINTL
+        BRA     PRINTW
+** Printing reg list
+PRINT_MOVEM_REG_LIST_UP:
+        MOVE.B  MOVEM_PRINT_COUNT,D0
+        BTST.L  D0,D5
+        JSR     CHECK_IF_ON
+        ADD.B   #1,MOVEM_PRINT_COUNT
+        CMPI.B  #16,MOVEM_PRINT_COUNT
+        BGE     RETURN
+        BRA     PRINT_MOVEM_REG_LIST_UP
+CHECK_IF_ON:
+        BEQ     RETURN
+        CMPI.B  #0,MOVEM_IS_FIRST
+        JSR     SHOULD_PRINT_SLASH_OR_NO
+        MOVE.B  #1,MOVEM_IS_FIRST
+        CLR.L   D1
+        CMPI.B  #7,MOVEM_PRINT_COUNT
+        BGT     IS_A
+IS_D:
+        JSR     PRINTD
+        MOVE.B  MOVEM_PRINT_COUNT,D1
+        BRA     CONT_IF_ON
+IS_A:
+        JSR     PRINTA
+        MOVE.B  MOVEM_PRINT_COUNT,D1
+        SUB.B   #8,D1
+CONT_IF_ON:
+        MOVE.B  #3,D0
+        TRAP    #15
+        RTS
+** For printing reg list in reverse
+PRINT_MOVEM_REG_LIST_DOWN:
+        MOVE.B  MOVEM_PRINT_COUNT,D0
+        BTST.L  D0,D5
+        JSR     CHECK_IF_ON_DOWN
+        ADD.B   #1,MOVEM_PRINT_COUNT
+        CMPI.B  #16,MOVEM_PRINT_COUNT
+        BGE     RETURN
+        BRA     PRINT_MOVEM_REG_LIST_DOWN
+CHECK_IF_ON_DOWN:
+        BEQ     RETURN
+        CMPI.B  #0,MOVEM_IS_FIRST
+        JSR     SHOULD_PRINT_SLASH_OR_NO
+        MOVE.B  #1,MOVEM_IS_FIRST
+        CLR.L   D1
+        CMPI.B  #7,MOVEM_PRINT_COUNT
+        BGT     IS_D_DOWN
+IS_A_DOWN:
+        JSR     PRINTA
+        MOVE.B  #7,D1
+        SUB.B   MOVEM_PRINT_COUNT,D1
+        BRA     CONT_IF_ON_DOWN
+IS_D_DOWN:
+        JSR     PRINTD
+        MOVE.B   #15,D1
+        SUB.B  MOVEM_PRINT_COUNT,D1
+        BRA     CONT_IF_ON_DOWN
+CONT_IF_ON_DOWN:
+        MOVE.B  #3,D0
+        TRAP    #15
+        RTS
+SHOULD_PRINT_SLASH_OR_NO:
+        BNE     PRINTSLASH
+        RTS
 ******** ADDQ FUNCTIONS ********
 PRINT_ADDQ_DATA:
         JSR     PRINTPOUND
@@ -2494,11 +2752,24 @@ PRINT_An_PRE:
         JSR     PRINTMINUS
         JSR     PRINT_An_IN
         RTS
-
-        
+PRINTD:
+        LEA     DISD,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        RTS
+PRINTA:
+        LEA     DISA,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        RTS
 ****************************************
 ******** PRINT COMMON CHARCTERS ********
 ****************************************
+PRINTSLASH:
+        LEA     DISSLASH,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        RTS
 PRINTPOUND:
         LEA     DISPOUND,A1
         MOVE.B  #14,D0
