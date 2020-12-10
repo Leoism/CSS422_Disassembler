@@ -248,6 +248,8 @@ DECODELOGIC_CODE:
         BTST.L  #8,D3
         BNE     DECODELEA_MEM   ; if the opcode starts with 0100 and the 8th binary is 1, then it is a LEA opcode
 CHECK_IS_MOVEM_OR_JSR:
+        BTST.L  #8,D3
+        BNE     DECODELEA_MEM
         BTST.L  #9,D3
         BEQ     DECODE_MOVEM
         BNE     DECODEJSR_REG
