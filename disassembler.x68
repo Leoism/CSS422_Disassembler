@@ -1527,7 +1527,7 @@ GET_ADD_EA:
         CMP.B   #1,D4
         BEQ     ADD_LONG_ADDR
         CMPI.B  #%100,D4
-        BEQ     ADD_WORD_ADDR
+        BEQ     ADD_IM_ADDR
         BRA     INVALIDOP
 ADD_WORD_ADDR:
         * Increment PC Counter
@@ -1539,7 +1539,11 @@ ADD_LONG_ADDR:
         CMP.W   #0,(A2)+   ; instructions are word size
         MOVE.L  (A2)+,D7    ; D6 will contain the address
         RTS
-
+ADD_IM_ADDR:
+        CMPI.B  #%011,D6
+        BEQ     ADD_WORD_ADDR
+        CMPI.B  #%111,D6
+        BEQ     ADD_LONG_ADDR
 ******** COMMON SHIFT FUNCTIONS ********
 * Returns:
 *   D7 - Register
