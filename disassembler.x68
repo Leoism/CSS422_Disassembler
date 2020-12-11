@@ -263,7 +263,12 @@ DECODEJSR_REG:
         BEQ     PRINTJSR_ADR
         CMP.B   #$7,D6      ; the EA is either word or long
         BEQ     PRINTJSR_ABS_ADR
-        BRA     INVALIDOP
+        JSR     PRINT_PC
+        JSR     INVALIDEA   ; invalid EA
+        LEA     DISJSR,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     CLOSING
 
 DECODELEA_MEM:
         JSR     GET_LEA_LOGIC_DATA
@@ -271,7 +276,12 @@ DECODELEA_MEM:
         BEQ     PRINTLEA_ADR
         CMP.B   #$7,D6
         BEQ     PRINTLEA_ABS_ADR
-        BRA     INVALIDOP
+        JSR     PRINT_PC
+        JSR     INVALIDEA   ; invalid EA
+        LEA     DISLEA,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     CLOSING
         
 ******** DECODE AND ***********
 DECODE_AND:
@@ -1720,7 +1730,12 @@ PRINTNOT:
         BEQ     PRINTNOT_PRE_INAn
         CMP.B   #7,D6
         BEQ     PRINTNOT_ABS_ADR
-        BRA     INVALIDOP
+        JSR     PRINT_PC
+        JSR     INVALIDEA
+        LEA     DISNOT,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     CLOSING
 
 PRINTNOT_REG:
         JSR     PRINT_PC
@@ -1861,7 +1876,12 @@ PRINT_AND_EA_Dn:
         BEQ     PRINT_AND_PRE_INAn_Dn
         CMP.B   #7,D6
         BEQ     PRINT_AND_ABS_ADR_Dn
-        BRA     INVALIDOP
+        JSR     PRINT_PC
+        JSR     INVALIDEA   ; invalid EA
+        LEA     DISAND,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     CLOSING
         
         
 PRINT_AND_Dn_Dn:
@@ -1931,7 +1951,12 @@ PRINT_AND_Dn_EA:
         BEQ     PRINT_AND_Dn_PRE_INAn
         CMP.B   #7,D6
         BEQ     PRINT_AND_Dn_ABS_ADR
-        BRA     INVALIDOP
+        JSR     PRINT_PC
+        JSR     INVALIDEA   ; invalid EA
+        LEA     DISAND,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     CLOSING
         
 PRINT_AND_Dn_INAn:
         JSR     PRINT_AND_OPENING
@@ -2003,7 +2028,12 @@ PRINT_OR_EA_Dn:
         BEQ     PRINT_OR_PRE_INAn_Dn
         CMP.B   #7,D6
         BEQ     PRINT_OR_ABS_ADR_Dn
-        BRA     INVALIDOP
+        JSR     PRINT_PC
+        JSR     INVALIDEA   ; invalid EA
+        LEA     DISOR,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     CLOSING
         
         
 PRINT_OR_Dn_Dn:
@@ -2073,7 +2103,12 @@ PRINT_OR_Dn_EA:
         BEQ     PRINT_OR_Dn_PRE_INAn
         CMP.B   #7,D6
         BEQ     PRINT_OR_Dn_ABS_ADR
-        BRA     INVALIDOP
+        JSR     PRINT_PC
+        JSR     INVALIDEA   ; invalid EA
+        LEA     DISOR,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     CLOSING
         
 PRINT_OR_Dn_INAn:
         JSR     PRINT_OR_OPENING
@@ -3085,6 +3120,7 @@ DONE:
         CLR.L   D3
         CLR.L   D7
         END    START        ; last line of source
+
 
 
 
