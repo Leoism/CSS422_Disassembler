@@ -535,6 +535,18 @@ DECODEADDS:
         ANDI.W  #$7,D3
         CMPI.W  #%111,D3
         BEQ     DECODE_ADD_EA
+        CMPI.W  #%101,D3
+        BEQ     INVALID_EA_ADD
+        CMPI.W  #%110,D3
+        BEQ     INVALID_EA_ADD
+        BRA     DECODE_ADD_Dn
+INVALID_EA_ADD:
+        JSR     PRINT_PC
+        JSR     INVALIDEA
+        LEA     DISADD,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     CLOSING
 ******** DECODE ADD Dn,Dn ********
 DECODE_ADD_Dn:
         JSR     GET_ADD_MODE_REG
@@ -544,6 +556,12 @@ DECODE_ADD_Dn:
 ******** DECODE ADD ea,Dn/Dn,ea ********
 DECODE_ADD_EA:
         JSR     GET_ADD_MODE_REG
+        CMPI.B  #%010,D4
+        BEQ     INVALID_EA_ADD
+        CMPI.B  #%011,D4
+        BEQ     INVALID_EA_ADD
+        CMPI.B  #%100,D4
+        BEQ     INVALID_EA_ADD
         JSR     GET_ADD_OPMODE
         JSR     GET_ADD_REG
         JSR     GET_ADD_EA
@@ -554,6 +572,10 @@ DECODE_ADD_EA:
 ******** DECODE ADDA.x Dn,An & An,An ********
 DECODE_ADDA_AnDn:
         JSR     GET_ADD_MODE_REG
+        CMPI.B  #%101,D7
+        BEQ     INVALID_EA_ADDA
+        CMPI.B  #%110,D7
+        BEQ     INVALID_EA_ADDA
         JSR     GET_ADD_OPMODE
         JSR     GET_ADD_REG
         * Check if we're dealing with Dn,An;An,An * 
@@ -563,7 +585,18 @@ DECODE_ADDA_AnDn:
         CMPI.B  #%111,D7
         BEQ     DECODE_ADDA_EA
         BRA     PRINT_ADDA_INDIRECT
+INVALID_EA_ADDA:
+        JSR     PRINT_PC
+        JSR     INVALIDEA
+        LEA     DISADDA,A1
+        MOVE.B  #14,D0
+        TRAP    #15 
+        BRA     CLOSING
 DECODE_ADDA_EA:
+        CMPI.B  #%010,D4
+        BEQ     INVALID_EA_ADDA
+        CMPI.B  #%011,D4
+        BEQ     INVALID_EA_ADDA
         JSR     GET_ADD_EA
         BRA     PRINT_ADDA_EA
 DECODE_ADDQ:
@@ -577,6 +610,10 @@ DECODE_ADDQ_AnDn:
         BTST.L  #8,D3
         BNE     INVALIDOP  ; bit #8 should be 0
         JSR     GET_ADD_MODE_REG
+        CMPI.B  #%101,D7
+        BEQ     INVALID_EA_ADDQ
+        CMPI.B  #%110,D7
+        BEQ     INVALID_EA_ADDQ
         JSR     GET_ADDQ_SIZE
         JSR     GET_ADDQ_DATA
 
@@ -590,7 +627,20 @@ DECODE_ADDQ_AnDn:
         * Check if dealing with An/Dn *
         BLE     PRINT_ADDQ_AnDn
         BRA     PRINT_ADDQ_INDIRECT
+INVALID_EA_ADDQ:
+        JSR     PRINT_PC
+        JSR     INVALIDEA
+        LEA     DISADDQ,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     CLOSING
 DECODE_ADDQ_EA:
+        CMPI.B  #%010,D4
+        BEQ     INVALID_EA_ADDQ
+        CMPI.B  #%011,D4
+        BEQ     INVALID_EA_ADDQ
+        CMPI.B  #%100,D4
+        BEQ     INVALID_EA_ADDQ
         JSR     GET_ADD_EA
         BRA     PRINT_ADDQ_EA
 DECODE_SUB:
@@ -607,15 +657,32 @@ DECODE_SUB_Dn:
         JSR     GET_ADD_REG
         * check if opmode is 111 or 011 (not supporting addressing for SUB *
         CMPI.W  #%111,D6
-        BEQ     INVALIDOP
+        BEQ     INVALID_EA_SUB
         CMPI.W  #%011,D6
-        BEQ     INVALIDOP
+        BEQ     INVALID_EA_SUB
         * check if dealing with ea *
+        CMPI.B  #%101,D7
+        BEQ     INVALID_EA_SUB
+        CMPI.B  #%110,D7
+        BEQ     INVALID_EA_SUB
         CMPI.W  #%111,D7
         BEQ     DECODE_SUB_EA
         BRA     PRINT_SUB_Dn
+INVALID_EA_SUB:
+        JSR     PRINT_PC
+        JSR     INVALIDEA
+        LEA     DISSUB,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     CLOSING
 ******** DECODE ADD ea,Dn/Dn,ea ********
 DECODE_SUB_EA:
+        CMPI.B  #%010,D4
+        BEQ     INVALID_EA_SUB
+        CMPI.B  #%011,D4
+        BEQ     INVALID_EA_SUB
+        CMPI.B  #%100,D4
+        BEQ     INVALID_EA_SUB
         JSR     GET_ADD_EA
         BRA     PRINT_SUB_EA        
 *****************************
@@ -1617,10 +1684,6 @@ GET_ADD_MODE_REG:
         MOVE.W  D2,D3
         LSR.W   #3,D3
         ANDI.W  #$7,D3     ; Gets the mode
-        CMPI.W  #%101,D3
-        BEQ     INVALIDOP
-        CMPI.W  #%110,D3   ; we are not supporting this addressing modes
-        BEQ     INVALIDOP 
         MOVE.W  D3,D7
         MOVE.W  D2,D3
         ANDI.W  #$7,D3     ; gets the register number
