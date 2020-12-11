@@ -1125,7 +1125,7 @@ DECODE_MOVEA_CHECK_EA:
         BEQ     DECODE_MOVEA_SOURCE_EA_CHECK
         
         JSR     INVALIDEA
-        LEA     DISMOVE,A1
+        LEA     DISMOVEA,A1
         MOVE.B  #14,D0
         TRAP    #15
         LEA     NEWLINE,A1 ; print a new line for reading purposes
@@ -1141,7 +1141,7 @@ DECODE_MOVEA_SOURCE_EA_CHECK:
         BEQ     MOVE_RETURN
         
         JSR     INVALIDEA
-        LEA     DISMOVE,A1
+        LEA     DISMOVEA,A1
         MOVE.B  #14,D0
         TRAP    #15
         LEA     NEWLINE,A1 ; print a new line for reading purposes
