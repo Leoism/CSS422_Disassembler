@@ -1729,7 +1729,7 @@ PRINTNOT:
         CMP.B   #4,D6
         BEQ     PRINTNOT_PRE_INAn
         CMP.B   #7,D6
-        BEQ     PRINTNOT_ABS_ADR
+        BEQ     CHECK_NOT_VALID_ADR
         JSR     PRINT_PC
         JSR     INVALIDEA
         LEA     DISNOT,A1
@@ -1777,6 +1777,18 @@ PRINTNOT_PRE_INAn:
         JSR     PRINTMINUS
         MOVE.B  D7,D4
         JSR     PRINT_An_IN
+        BRA     CLOSING
+        
+CHECK_NOT_VALID_ADR:
+        CMP.B   #0,D7
+        BEQ     PRINTNOT_ABS_ADR
+        CMP.B   #1,D7
+        BEQ     PRINTNOT_ABS_ADR
+        JSR     PRINT_PC
+        JSR     INVALIDEA
+        LEA     DISNOT,A1
+        MOVE.B  #14,D0
+        TRAP    #15
         BRA     CLOSING
         
 PRINTNOT_ABS_ADR:
@@ -1875,7 +1887,7 @@ PRINT_AND_EA_Dn:
         CMP.B   #4,D6
         BEQ     PRINT_AND_PRE_INAn_Dn
         CMP.B   #7,D6
-        BEQ     PRINT_AND_ABS_ADR_Dn
+        BEQ     CHECK_AND_EA_ABS_ADR
         JSR     PRINT_PC
         JSR     INVALIDEA   ; invalid EA
         LEA     DISAND,A1
@@ -1926,6 +1938,20 @@ PRINT_AND_PRE_INAn_Dn:
         JSR     PRINTDn
         BRA     CLOSING
         
+CHECK_AND_EA_ABS_ADR:  
+        CMP.B   #0,D7
+        BEQ     PRINT_AND_ABS_ADR_Dn
+        CMP.B   #1,D7
+        BEQ     PRINT_AND_ABS_ADR_Dn
+        CMP.B   #4,D7
+        BEQ     PRINT_AND_ABS_ADR_Dn
+        JSR     PRINT_PC
+        JSR     INVALIDEA   ; invalid EA
+        LEA     DISAND,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     CLOSING      
+      
 PRINT_AND_ABS_ADR_Dn:
         JSR     PRINT_AND_OPENING
         JSR     DETERMINE_ADDR_MODE
@@ -1950,7 +1976,7 @@ PRINT_AND_Dn_EA:
         CMP.B   #4,D6
         BEQ     PRINT_AND_Dn_PRE_INAn
         CMP.B   #7,D6
-        BEQ     PRINT_AND_Dn_ABS_ADR
+        BEQ     CHECK_AND_ABS_ADR
         JSR     PRINT_PC
         JSR     INVALIDEA   ; invalid EA
         LEA     DISAND,A1
@@ -1983,7 +2009,19 @@ PRINT_AND_Dn_PRE_INAn:
         JSR     PRINTMINUS
         JSR     PRINT_An_IN
         BRA     CLOSING
-        
+     
+CHECK_AND_ABS_ADR:
+        CMP.B   #0,D7
+        BEQ     PRINT_AND_Dn_ABS_ADR
+        CMP.B   #1,D7
+        BEQ     PRINT_AND_Dn_ABS_ADR
+        JSR     PRINT_PC
+        JSR     INVALIDEA   ; invalid EA
+        LEA     DISAND,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     CLOSING
+   
 PRINT_AND_Dn_ABS_ADR:
         JSR     PRINT_AND_OPENING
         JSR     PRINTDn
@@ -2027,7 +2065,7 @@ PRINT_OR_EA_Dn:
         CMP.B   #4,D6
         BEQ     PRINT_OR_PRE_INAn_Dn
         CMP.B   #7,D6
-        BEQ     PRINT_OR_ABS_ADR_Dn
+        BEQ     CHECK_OR_ABS_ADR
         JSR     PRINT_PC
         JSR     INVALIDEA   ; invalid EA
         LEA     DISOR,A1
@@ -2078,6 +2116,20 @@ PRINT_OR_PRE_INAn_Dn:
         JSR     PRINTDn
         BRA     CLOSING
         
+CHECK_OR_ABS_ADR:
+        CMP.B   #0,D7
+        BEQ     PRINT_OR_ABS_ADR_Dn
+        CMP.B   #1,D7
+        BEQ     PRINT_OR_ABS_ADR_Dn
+        CMP.B   #4,D7
+        BEQ     PRINT_OR_ABS_ADR_Dn
+        JSR     PRINT_PC
+        JSR     INVALIDEA   ; invalid EA
+        LEA     DISOR,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     CLOSING
+        
 PRINT_OR_ABS_ADR_Dn:
         JSR     PRINT_OR_OPENING
         JSR     DETERMINE_ADDR_MODE
@@ -2102,7 +2154,7 @@ PRINT_OR_Dn_EA:
         CMP.B   #4,D6
         BEQ     PRINT_OR_Dn_PRE_INAn
         CMP.B   #7,D6
-        BEQ     PRINT_OR_Dn_ABS_ADR
+        BEQ     CHECK_OR_EA_ABS_ADR
         JSR     PRINT_PC
         JSR     INVALIDEA   ; invalid EA
         LEA     DISOR,A1
@@ -2134,6 +2186,18 @@ PRINT_OR_Dn_PRE_INAn:
         MOVE.B  D7,D4
         JSR     PRINTMINUS
         JSR     PRINT_An_IN
+        BRA     CLOSING
+        
+CHECK_OR_EA_ABS_ADR:
+        CMP.B   #0,D7
+        BEQ     PRINT_OR_ABS_ADR_Dn
+        CMP.B   #1,D7
+        BEQ     PRINT_OR_ABS_ADR_Dn
+        JSR     PRINT_PC
+        JSR     INVALIDEA   ; invalid EA
+        LEA     DISOR,A1
+        MOVE.B  #14,D0
+        TRAP    #15
         BRA     CLOSING
         
 PRINT_OR_Dn_ABS_ADR:
@@ -3120,6 +3184,7 @@ DONE:
         CLR.L   D3
         CLR.L   D7
         END    START        ; last line of source
+
 
 
 
