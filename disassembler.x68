@@ -30,7 +30,8 @@ ASKEN   DC.B    CR,LF,'Please enter ending address in hex:',0
 DISST   DC.B    CR,LF,'Starting Address:',0
 DISEN   DC.B    CR,LF,'Ending Address:',0
 DISWAIT DC.B    'Please press any key to continue displaying',0
-DISDONE DC.B    'Finished.',0
+DISRESTART DC.B 'Press ESC to quit. Press any key to restart',0
+DISDONE DC.B    CR,LF,'Finished.',0
 INVALIDMSG DC.B    CR,LF,'You entered an invalid address. Try again.',CR,LF,0
 INVALIDEAMSG DC.B    'Invalid EA for: ',0
 ******** COMMON CHARACTERS ********
@@ -101,7 +102,8 @@ DISDATA DC.B    '  DATA  ',0
         ORG     $1000     ; start at 1000
 START:          
 
-STARTADR:                   
+STARTADR:
+        MOVE.L  #0,LOOPCOUNT               
         LEA     ASKST,A1    ; load message to A1
         MOVE.B  #13,D0      ; use trap task 13
         TRAP    #15
@@ -3498,13 +3500,22 @@ CLEAR_ALL:
         CLR.L   D7
         RTS
 DONE:
+        JSR     CLEAR_ALL
+
+        LEA     DISRESTART,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+
+        MOVE.B  #5,D0
+        TRAP    #15
+
+        CMPI.B  #$1B,D1
+        BNE     STARTADR     
+
+REALLY_DONE:
         LEA     DISDONE,A1
         MOVE.B  #14,D0
         TRAP    #15
-        CLR.L   D1          ; clear up the data registers used.
-        CLR.L   D2
-        CLR.L   D3
-        CLR.L   D7
         END    START        ; last line of source
 
 
