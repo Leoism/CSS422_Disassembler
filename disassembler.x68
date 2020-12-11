@@ -388,6 +388,7 @@ POTENTIAL_INVALID_EA_LSL:
         CMPI.B  #4,D7
         BNE     PRINTLSL_MEM
 INVALID_EA_LSL:
+        JSR     PRINT_PC
         JSR     INVALIDEA
         LEA     DISLSL,A1
         MOVE.B  #14,D0
@@ -410,6 +411,7 @@ POTENTIAL_INVALID_EA_ASL:
         CMPI.B  #4,D7
         BNE     PRINTASL_MEM
 INVALID_EA_ASL:
+        JSR     PRINT_PC
         JSR     INVALIDEA
         LEA     DISASL,A1
         MOVE.B  #14,D0
@@ -432,6 +434,7 @@ POTENTIAL_INVALID_EA_ROL:
         CMPI.B  #4,D7
         BNE     PRINTROL_MEM
 INVALID_EA_ROL:
+        JSR     PRINT_PC
         JSR     INVALIDEA
         LEA     DISROL,A1
         MOVE.B  #14,D0
@@ -458,6 +461,7 @@ POTENTIAL_INVALID_EA_LSR:
         CMPI.B  #4,D7
         BNE     PRINTLSR_MEM
 INVALID_EA_LSR:
+        JSR     PRINT_PC
         JSR     INVALIDEA
         LEA     DISLSR,A1
         MOVE.B  #14,D0
@@ -480,6 +484,7 @@ POTENTIAL_INVALID_EA_ASR:
         CMPI.B  #4,D7
         BNE     PRINTASR_MEM
 INVALID_EA_ASR:
+        JSR     PRINT_PC
         JSR     INVALIDEA
         LEA     DISASR,A1
         MOVE.B  #14,D0
@@ -502,6 +507,7 @@ POTENTIAL_INVALID_EA_ROR:
         CMPI.B  #4,D7
         BNE     PRINTROR_MEM
 INVALID_EA_ROR:
+        JSR     PRINT_PC
         JSR     INVALIDEA
         LEA     DISROR,A1
         MOVE.B  #14,D0
