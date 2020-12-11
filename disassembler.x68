@@ -20,6 +20,8 @@ MOVEM_DR_VAR   DC.B 1
 MOVEM_REG_LIST DC.W 1
 MOVEM_PRINT_COUNT DC.B 1
 MOVEM_IS_FIRST DC.B 1
+******** SHIFT VARS ********
+SHIFT_MODE     DC.B 1
 ******* PC PRINTING ********
 TEMP_CURR_OP DC.W 1
 ******** USER INPUT/OUTPUT/INTERACTIONS ********
@@ -371,32 +373,146 @@ DECODE_LSL_MEM:
         BNE     DECODE_ROL_MEM
         BTST.L  #9,D3
         BEQ     DECODE_ASL_MEM
+        MOVE.B  #0,SHIFT_MODE * reset shift mode
         JSR     GET_MEM_SHIFT_DATA
-        BRA     PRINTLSL_MEM
+        CMPI.B  #%010,SHIFT_MODE
+        BEQ     PRINTLSL_MEM
+        CMPI.B  #%011,SHIFT_MODE
+        BEQ     PRINTLSL_MEM
+        CMPI.B  #%100,SHIFT_MODE
+        BEQ     PRINTLSL_MEM
+        CMPI.B  #%111,SHIFT_MODE
+        BEQ     POTENTIAL_INVALID_EA_LSL
+        BRA     INVALID_EA_LSL
+POTENTIAL_INVALID_EA_LSL:
+        CMPI.B  #4,D7
+        BNE     PRINTLSL_MEM
+INVALID_EA_LSL:
+        JSR     PRINT_PC
+        JSR     INVALIDEA
+        LEA     DISLSL,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     CLOSING
 ******** DECODE ASL MEM ********
 DECODE_ASL_MEM:
+        MOVE.B  #0,SHIFT_MODE * reset shift mode
         JSR     GET_MEM_SHIFT_DATA
-        BRA     PRINTASL_MEM
+        CMPI.B  #%010,SHIFT_MODE
+        BEQ     PRINTASL_MEM
+        CMPI.B  #%011,SHIFT_MODE
+        BEQ     PRINTASL_MEM
+        CMPI.B  #%100,SHIFT_MODE
+        BEQ     PRINTASL_MEM
+        CMPI.B  #%111,SHIFT_MODE
+        BEQ     POTENTIAL_INVALID_EA_ASL
+        BRA     INVALID_EA_ASL
+POTENTIAL_INVALID_EA_ASL:
+        CMPI.B  #4,D7
+        BNE     PRINTASL_MEM
+INVALID_EA_ASL:
+        JSR     PRINT_PC
+        JSR     INVALIDEA
+        LEA     DISASL,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     CLOSING
 ******** DECODE ROL MEM ********
 DECODE_ROL_MEM:
+        MOVE.B  #0,SHIFT_MODE * reset shift mode
         JSR     GET_MEM_SHIFT_DATA
-        BRA     PRINTROL_MEM
+        CMPI.B  #%010,SHIFT_MODE
+        BEQ     PRINTROL_MEM
+        CMPI.B  #%011,SHIFT_MODE
+        BEQ     PRINTROL_MEM
+        CMPI.B  #%100,SHIFT_MODE
+        BEQ     PRINTROL_MEM
+        CMPI.B  #%111,SHIFT_MODE
+        BEQ     POTENTIAL_INVALID_EA_ROL
+        BRA     INVALID_EA_ROL
+POTENTIAL_INVALID_EA_ROL:
+        CMPI.B  #4,D7
+        BNE     PRINTROL_MEM
+INVALID_EA_ROL:
+        JSR     PRINT_PC
+        JSR     INVALIDEA
+        LEA     DISROL,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     CLOSING
 ******** DECODE LSR MEM ********
 DECODE_LSR_MEM:
         BTST.L  #10,D3
         BNE     DECODE_ROR_MEM
         BTST.L  #9,D3
         BEQ     DECODE_ASR_MEM
+        MOVE.B  #0,SHIFT_MODE * reset shift mode
         JSR     GET_MEM_SHIFT_DATA
-        BRA     PRINTLSR_MEM
+        CMPI.B  #%010,SHIFT_MODE
+        BEQ     PRINTLSR_MEM
+        CMPI.B  #%011,SHIFT_MODE
+        BEQ     PRINTLSR_MEM
+        CMPI.B  #%100,SHIFT_MODE
+        BEQ     PRINTLSR_MEM
+        CMPI.B  #%111,SHIFT_MODE
+        BEQ     POTENTIAL_INVALID_EA_LSR
+        BRA     INVALID_EA_LSR
+POTENTIAL_INVALID_EA_LSR:
+        CMPI.B  #4,D7
+        BNE     PRINTLSR_MEM
+INVALID_EA_LSR:
+        JSR     PRINT_PC
+        JSR     INVALIDEA
+        LEA     DISLSR,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     CLOSING
 ******** DECODE ASR MEM ********
 DECODE_ASR_MEM:
+        MOVE.B  #0,SHIFT_MODE * reset shift mode
         JSR     GET_MEM_SHIFT_DATA
-        BRA     PRINTASR_MEM
+        CMPI.B  #%010,SHIFT_MODE
+        BEQ     PRINTASR_MEM
+        CMPI.B  #%011,SHIFT_MODE
+        BEQ     PRINTASR_MEM
+        CMPI.B  #%100,SHIFT_MODE
+        BEQ     PRINTASR_MEM
+        CMPI.B  #%111,SHIFT_MODE
+        BEQ     POTENTIAL_INVALID_EA_ASR
+        BRA     INVALID_EA_ASR
+POTENTIAL_INVALID_EA_ASR:
+        CMPI.B  #4,D7
+        BNE     PRINTASR_MEM
+INVALID_EA_ASR:
+        JSR     PRINT_PC
+        JSR     INVALIDEA
+        LEA     DISASR,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     CLOSING
 ******** DECODE ROR MEM ********
 DECODE_ROR_MEM:
+        MOVE.B  #0,SHIFT_MODE * reset shift mode
         JSR     GET_MEM_SHIFT_DATA
-        BRA     PRINTROR_MEM
+        CMPI.B  #%010,SHIFT_MODE
+        BEQ     PRINTROR_MEM
+        CMPI.B  #%011,SHIFT_MODE
+        BEQ     PRINTROR_MEM
+        CMPI.B  #%100,SHIFT_MODE
+        BEQ     PRINTROR_MEM
+        CMPI.B  #%111,SHIFT_MODE
+        BEQ     POTENTIAL_INVALID_EA_ROR
+        BRA     INVALID_EA_ROR
+POTENTIAL_INVALID_EA_ROR:
+        CMPI.B  #4,D7
+        BNE     PRINTROR_MEM
+INVALID_EA_ROR:
+        JSR     PRINT_PC
+        JSR     INVALIDEA
+        LEA     DISROR,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     CLOSING
 ******** DECODE ADDITIONS ********
 DECODEADDS:
         MOVE.W  D2,D3
@@ -419,6 +535,18 @@ DECODEADDS:
         ANDI.W  #$7,D3
         CMPI.W  #%111,D3
         BEQ     DECODE_ADD_EA
+        CMPI.W  #%101,D3
+        BEQ     INVALID_EA_ADD
+        CMPI.W  #%110,D3
+        BEQ     INVALID_EA_ADD
+        BRA     DECODE_ADD_Dn
+INVALID_EA_ADD:
+        JSR     PRINT_PC
+        JSR     INVALIDEA
+        LEA     DISADD,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     CLOSING
 ******** DECODE ADD Dn,Dn ********
 DECODE_ADD_Dn:
         JSR     GET_ADD_MODE_REG
@@ -428,6 +556,12 @@ DECODE_ADD_Dn:
 ******** DECODE ADD ea,Dn/Dn,ea ********
 DECODE_ADD_EA:
         JSR     GET_ADD_MODE_REG
+        CMPI.B  #%010,D4
+        BEQ     INVALID_EA_ADD
+        CMPI.B  #%011,D4
+        BEQ     INVALID_EA_ADD
+        CMPI.B  #%100,D4
+        BEQ     INVALID_EA_ADD
         JSR     GET_ADD_OPMODE
         JSR     GET_ADD_REG
         JSR     GET_ADD_EA
@@ -438,6 +572,10 @@ DECODE_ADD_EA:
 ******** DECODE ADDA.x Dn,An & An,An ********
 DECODE_ADDA_AnDn:
         JSR     GET_ADD_MODE_REG
+        CMPI.B  #%101,D7
+        BEQ     INVALID_EA_ADDA
+        CMPI.B  #%110,D7
+        BEQ     INVALID_EA_ADDA
         JSR     GET_ADD_OPMODE
         JSR     GET_ADD_REG
         * Check if we're dealing with Dn,An;An,An * 
@@ -447,7 +585,18 @@ DECODE_ADDA_AnDn:
         CMPI.B  #%111,D7
         BEQ     DECODE_ADDA_EA
         BRA     PRINT_ADDA_INDIRECT
+INVALID_EA_ADDA:
+        JSR     PRINT_PC
+        JSR     INVALIDEA
+        LEA     DISADDA,A1
+        MOVE.B  #14,D0
+        TRAP    #15 
+        BRA     CLOSING
 DECODE_ADDA_EA:
+        CMPI.B  #%010,D4
+        BEQ     INVALID_EA_ADDA
+        CMPI.B  #%011,D4
+        BEQ     INVALID_EA_ADDA
         JSR     GET_ADD_EA
         BRA     PRINT_ADDA_EA
 DECODE_ADDQ:
@@ -461,6 +610,10 @@ DECODE_ADDQ_AnDn:
         BTST.L  #8,D3
         BNE     INVALIDOP  ; bit #8 should be 0
         JSR     GET_ADD_MODE_REG
+        CMPI.B  #%101,D7
+        BEQ     INVALID_EA_ADDQ
+        CMPI.B  #%110,D7
+        BEQ     INVALID_EA_ADDQ
         JSR     GET_ADDQ_SIZE
         JSR     GET_ADDQ_DATA
 
@@ -474,7 +627,20 @@ DECODE_ADDQ_AnDn:
         * Check if dealing with An/Dn *
         BLE     PRINT_ADDQ_AnDn
         BRA     PRINT_ADDQ_INDIRECT
+INVALID_EA_ADDQ:
+        JSR     PRINT_PC
+        JSR     INVALIDEA
+        LEA     DISADDQ,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     CLOSING
 DECODE_ADDQ_EA:
+        CMPI.B  #%010,D4
+        BEQ     INVALID_EA_ADDQ
+        CMPI.B  #%011,D4
+        BEQ     INVALID_EA_ADDQ
+        CMPI.B  #%100,D4
+        BEQ     INVALID_EA_ADDQ
         JSR     GET_ADD_EA
         BRA     PRINT_ADDQ_EA
 DECODE_SUB:
@@ -491,15 +657,32 @@ DECODE_SUB_Dn:
         JSR     GET_ADD_REG
         * check if opmode is 111 or 011 (not supporting addressing for SUB *
         CMPI.W  #%111,D6
-        BEQ     INVALIDOP
+        BEQ     INVALID_EA_SUB
         CMPI.W  #%011,D6
-        BEQ     INVALIDOP
+        BEQ     INVALID_EA_SUB
         * check if dealing with ea *
+        CMPI.B  #%101,D7
+        BEQ     INVALID_EA_SUB
+        CMPI.B  #%110,D7
+        BEQ     INVALID_EA_SUB
         CMPI.W  #%111,D7
         BEQ     DECODE_SUB_EA
         BRA     PRINT_SUB_Dn
+INVALID_EA_SUB:
+        JSR     PRINT_PC
+        JSR     INVALIDEA
+        LEA     DISSUB,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     CLOSING
 ******** DECODE ADD ea,Dn/Dn,ea ********
 DECODE_SUB_EA:
+        CMPI.B  #%010,D4
+        BEQ     INVALID_EA_SUB
+        CMPI.B  #%011,D4
+        BEQ     INVALID_EA_SUB
+        CMPI.B  #%100,D4
+        BEQ     INVALID_EA_SUB
         JSR     GET_ADD_EA
         BRA     PRINT_SUB_EA        
 *****************************
@@ -1631,10 +1814,6 @@ GET_ADD_MODE_REG:
         MOVE.W  D2,D3
         LSR.W   #3,D3
         ANDI.W  #$7,D3     ; Gets the mode
-        CMPI.W  #%101,D3
-        BEQ     INVALIDOP
-        CMPI.W  #%110,D3   ; we are not supporting this addressing modes
-        BEQ     INVALIDOP 
         MOVE.W  D3,D7
         MOVE.W  D2,D3
         ANDI.W  #$7,D3     ; gets the register number
@@ -1719,10 +1898,15 @@ GET_MEM_SHIFT_DATA:
         ANDI.L  #$7,D3
         MOVE.B  D3,D7      ; D7 will have register
         MOVE.L  D2,D3
+        LSR.W   #3,D3
+        ANDI    #%111,D3
+        MOVE.B  D3,SHIFT_MODE
+        MOVE.W  D2,D3
         JSR     IS_MEM_INDIRECT
         CMPI.B  #$FF,IS_IN_MEM_BOOL
         BEQ     RETURN  
         JSR     DETERMINE_ADDR_MODE
+        MOVE.B  #%111,SHIFT_MODE
         RTS
         
 IS_MEM_INDIRECT:
@@ -1733,7 +1917,7 @@ IS_MEM_INDIRECT:
         BEQ     RETURN
         MOVE.B  D7,D4
         MOVE.B  D3,D7
-        MOVE.B #$FF,IS_IN_MEM_BOOL
+        MOVE.B  #$FF,IS_IN_MEM_BOOL
         RTS
         
 ******** DETERMINING ADDRESS MODES ********
