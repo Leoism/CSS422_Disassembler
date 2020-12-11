@@ -1461,8 +1461,12 @@ DETERMINE_MOVEM_REG2MEM:
         BEQ     PRINT_MOVEM_REG2MEM_IN
         CMPI.W  #%100,D5 
         BEQ     PRINT_MOVEM_REG2MEM_PRE
+        JSR     PRINT_PC
         JSR     INVALIDEA
-        JSR     SKIPTONEXTOP
+        LEA     DISMOVEM,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     CLOSING
 DETERMINE_MOVEM_MEM2REG:
         CMPI.W  #%111,D5
         BEQ     PRINT_MOVEM_MEM2REG_EA
@@ -1470,8 +1474,12 @@ DETERMINE_MOVEM_MEM2REG:
         BEQ     PRINT_MOVEM_MEM2REG_IN
         CMPI.W  #%011,D5
         BEQ     PRINT_MOVEM_MEM2REG_IN
+        JSR     PRINT_PC
         JSR     INVALIDEA
-        JSR     SKIPTONEXTOP
+        LEA     DISMOVEM,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     CLOSING
 GET_MOVEM_SOURCE:
         MOVE.W  D2,D3
         LSR.W   #3,D3
