@@ -781,14 +781,18 @@ DECODE_MOVE:
         
         *code goes there *MOVE!!!!!
 
-        JSR     GET_MOVE_SIZE *storing size in D5
+        
         *Print the PC
         JSR     PRINT_PC
+        *check if ea is valid
+        JSR     DECODE_MOVE_CHECK_EA
+        
         *Print out the label
         LEA     DISMOVE,A1
         MOVE.B  #14,D0
         TRAP    #15
         *Print the size
+        JSR     GET_MOVE_SIZE *storing size in D5
         JSR     PRINT_MOVE_SIZE *note this is bugged
         *todo: make your own printsize
         
@@ -822,6 +826,84 @@ DECODE_MOVE:
         JSR     INVALIDEA
         JSR     GET_MOVE_DEST
         BRA     DECODE_MOVE_DEST
+
+*CHECKING EA FOR MOVE
+DECODE_MOVE_CHECK_EA:
+        JSR     GET_MOVE_SOURCE
+        CMPI.W  #%000,D7
+        BEQ     DECODE_MOVE_CHECK_EA_DEST
+        CMPI.W  #%001,D7
+        BEQ     DECODE_MOVE_CHECK_EA_DEST
+        CMPI.W  #%010,D7
+        BEQ     DECODE_MOVE_CHECK_EA_DEST
+        CMPI.W  #%011,D7
+        BEQ     DECODE_MOVE_CHECK_EA_DEST
+        CMPI.W  #%100,D7
+        BEQ     DECODE_MOVE_CHECK_EA_DEST
+        CMPI.W  #%111,D7
+        BEQ     DECODE_MOVE_SOURCE_EA_CHECK
+        
+        JSR     INVALIDEA
+        LEA     DISMOVE,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        LEA     NEWLINE,A1 ; print a new line for reading purposes
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     MOVE_NEXT_LOOP
+DECODE_MOVE_SOURCE_EA_CHECK:
+        CMPI.W  #%000,D6
+        BEQ     DECODE_MOVE_CHECK_EA_DEST
+        CMPI.W  #%001,D6
+        BEQ     DECODE_MOVE_CHECK_EA_DEST
+        CMPI.W  #%100,D6
+        BEQ     DECODE_MOVE_CHECK_EA_DEST
+        
+        JSR     INVALIDEA
+        LEA     DISMOVE,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        LEA     NEWLINE,A1 ; print a new line for reading purposes
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     MOVE_NEXT_LOOP
+      
+DECODE_MOVE_CHECK_EA_DEST:
+        JSR     GET_MOVE_DEST
+        
+        CMPI.W  #%000,D5
+        BEQ     MOVE_RETURN
+        CMPI.W  #%010,D5
+        BEQ     MOVE_RETURN
+        CMPI.W  #%011,D5
+        BEQ     MOVE_RETURN
+        CMPI.W  #%100,D5
+        BEQ     MOVE_RETURN
+        CMPI.W  #%111,D5
+        BEQ     DECODE_MOVE_DEST_EA_CHECK
+        
+        JSR     INVALIDEA
+        LEA     DISMOVE,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        LEA     NEWLINE,A1 ; print a new line for reading purposes
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     MOVE_NEXT_LOOP
+DECODE_MOVE_DEST_EA_CHECK:
+        CMPI.W  #%000,D4
+        BEQ     MOVE_RETURN
+        CMPI.W  #%001,D4
+        BEQ     MOVE_RETURN
+        
+        JSR     INVALIDEA
+        LEA     DISMOVE,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        LEA     NEWLINE,A1 ; print a new line for reading purposes
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     MOVE_NEXT_LOOP
         
 DECODE_MOVE_SOURCE_EA:
         CMPI.W  #%000,D6
@@ -975,14 +1057,18 @@ DECODE_MOVEA:
         MOVE.W  D3,D4 *getting destination register
         MOVE.W  D2,D3
         
-        JSR     GET_MOVE_SIZE
         *Print the PC
         JSR     PRINT_PC
+        
+        *CHECK EA
+        JSR     DECODE_MOVEA_CHECK_EA
+        
         *Print out the label
         LEA     DISMOVEA,A1
         MOVE.B  #14,D0
         TRAP    #15
         *Print the size
+        JSR     GET_MOVE_SIZE
         JSR     PRINT_MOVE_SIZE
         
         *Get destination and source
@@ -1011,6 +1097,48 @@ DECODE_MOVEA:
         MOVE.B  #14,D0
         TRAP    #15
         BRA     MOVE_NEXT_LOOP
+
+*CHECKING EA FOR MOVE
+DECODE_MOVEA_CHECK_EA:
+        JSR     GET_MOVE_SOURCE
+        CMPI.W  #%000,D7
+        BEQ     MOVE_RETURN
+        CMPI.W  #%001,D7
+        BEQ     MOVE_RETURN
+        CMPI.W  #%010,D7
+        BEQ     MOVE_RETURN
+        CMPI.W  #%011,D7
+        BEQ     MOVE_RETURN
+        CMPI.W  #%100,D7
+        BEQ     MOVE_RETURN
+        CMPI.W  #%111,D7
+        BEQ     DECODE_MOVEA_SOURCE_EA_CHECK
+        
+        JSR     INVALIDEA
+        LEA     DISMOVE,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        LEA     NEWLINE,A1 ; print a new line for reading purposes
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     MOVE_NEXT_LOOP
+DECODE_MOVEA_SOURCE_EA_CHECK:
+        CMPI.W  #%000,D6
+        BEQ     MOVE_RETURN
+        CMPI.W  #%001,D6
+        BEQ     MOVE_RETURN
+        CMPI.W  #%100,D6
+        BEQ     MOVE_RETURN
+        
+        JSR     INVALIDEA
+        LEA     DISMOVE,A1
+        MOVE.B  #14,D0
+        TRAP    #15
+        LEA     NEWLINE,A1 ; print a new line for reading purposes
+        MOVE.B  #14,D0
+        TRAP    #15
+        BRA     MOVE_NEXT_LOOP
+
 
 DECODE_MOVEA_SOURCE_EA:
         CMPI.W  #%000,D6
@@ -1211,6 +1339,8 @@ MOVE_NEXT_LOOP:
         CMP.L   ENADR,A2   ; keep looping until reach the end
         BLT     LOOPMEM
         BRA     DONE
+MOVE_RETURN:
+        RTS
 ******** MOVE PRINTS ***********
 *SOURCE
 PRINT_MOVE_SDN:
@@ -3070,6 +3200,7 @@ DONE:
         CLR.L   D3
         CLR.L   D7
         END    START        ; last line of source
+
 
 
 
