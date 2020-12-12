@@ -716,6 +716,8 @@ DECODEBRANCHES:
         BEQ     DECODE_BGE
         CMPI.W  #%0111,D3
         BEQ     DECODE_BEQ
+        *If the conditional does not match to any of the supported opcodes
+        BRA     INVALIDOP *This would be an invalid OP code
 DECODE_BRA:
         JSR     GET_DISPLACEMENT
         JSR     PRINT_PC
